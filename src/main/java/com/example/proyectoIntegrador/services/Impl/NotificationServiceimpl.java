@@ -1,49 +1,67 @@
 package com.example.proyectoIntegrador.services.Impl;
 
+import com.example.proyectoIntegrador.models.DetailAppointment;
 import com.example.proyectoIntegrador.services.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 @Service
 public class NotificationServiceimpl implements NotificationService {
+
+    private final ConcurrentMap<String, SseEmitter> clientes =
+            new ConcurrentHashMap<>();
+
     @Override
-    public void notifySSE(String client_id) {
+    public SseEmitter stablishConnection(String client_id) {
 
+        SseEmitter emitter = new SseEmitter(0L);
+
+        clientes.put(client_id, emitter);
+
+        Runnable eliminarConexion = () -> clientes.remove(client_id);
+
+        emitter.onCompletion(eliminarConexion);
+        emitter.onTimeout(() -> {
+            eliminarConexion.run();
+            emitter.complete();
+        });
+        emitter.onError(error -> eliminarConexion.run());
+
+        try {
+            emitter.send(SseEmitter.event()
+                    .name("conectado")
+                    .data("Conexión SSE establecida"));
+        } catch (IOException e) {
+            eliminarConexion.run();
+            emitter.completeWithError(e);
+        }
+
+        return emitter;
     }
-        private final ConcurrentMap<String, SseEmitter> clientes =
-                new ConcurrentHashMap<>();
 
-        public SseEmitter conectar() {
-            String clienteId = UUID.randomUUID().toString();
+    @Override
+    public void notifyAppointmentCreation(String client_id, DetailAppointment dataAppointmentDTO) {
+        SseEmitter emitter = clientes.get(client_id);
 
-            // Conexión de larga duración
-            SseEmitter emitter = new SseEmitter(0L);
+        if (emitter == null) {
+            return;
+        }
 
-            clientes.put(clienteId, emitter);
-
-            Runnable eliminarConexion = () -> clientes.remove(clienteId);
-
-            emitter.onCompletion(eliminarConexion);
-            emitter.onTimeout(() -> {
-                eliminarConexion.run();
-                emitter.complete();
-            });
-            emitter.onError(error -> eliminarConexion.run());
-
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("conectado")
-                        .data("Conexión SSE establecida"));
-            } catch (IOException e) {
-                eliminarConexion.run();
-                emitter.completeWithError(e);
-            }
-
-            return emitter;
+        try {
+            emitter.send(
+                    SseEmitter.event()
+                            .name("cita-creada")
+                            .data(dataAppointmentDTO)
+            );
+        } catch (IOException e) {
+            clientes.remove(client_id, emitter);
+            emitter.completeWithError(e);
+        }
     }
+
+
 }

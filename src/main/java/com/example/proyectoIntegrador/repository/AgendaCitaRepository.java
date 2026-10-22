@@ -19,7 +19,7 @@ public interface AgendaCitaRepository {
 
     Optional<Boolean> validateVeterinarian(int idVeterinarian);
 
-    Optional<Integer> insertAgendaCita(String description, String fecha, String hora, Integer estadoId, Integer clienteId, Integer medicoId, Integer mascotaId);
+    Optional<Integer> insertAgendaCita(String description, String fecha, LocalTime hora, Integer estadoId, Integer clienteId, Integer medicoId, Integer mascotaId);
 
     Optional<Boolean> actualizarFechaHoraCita(Integer citaId, String nuevaFecha, String nuevaHora, Integer medicoId);
 

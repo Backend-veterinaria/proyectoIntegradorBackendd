@@ -70,7 +70,7 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
 
 
     @Transactional
-    public Optional<Integer> insertAgendaCita(String description, String fecha, String hora, Integer estadoId, Integer clienteId, Integer medicoId, Integer mascotaId) {
+    public Optional<Integer> insertAgendaCita(String description, String fecha, LocalTime hora, Integer estadoId, Integer clienteId, Integer medicoId, Integer mascotaId) {
         log.debug("Guardar insertAgendaCita");
 
         // SQL para insertar la cita
@@ -93,7 +93,7 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
                 PreparedStatement ps = connection.prepareStatement(sqlCita, new String[]{"cita_id"});
                 ps.setString(1, description);
                 ps.setDate(2, Date.valueOf(obtenerFechaEnviar(fecha)));
-                ps.setString(3, hora);
+                ps.setTime(3, java.sql.Time.valueOf(hora));
                 return ps;
             }, keyHolder);
 
@@ -188,7 +188,7 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
         log.debug("validate client");
 
         String sql = """
-                SELECT COUNT(*) FROM cliente WHERE cliente_id = ? 
+                SELECT COUNT('x') FROM cliente WHERE cliente_id = ?
                 """;
 
         try {

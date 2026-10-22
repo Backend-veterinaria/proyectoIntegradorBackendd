@@ -4,6 +4,7 @@ import com.example.proyectoIntegrador.models.*;
 import com.example.proyectoIntegrador.repository.AgendaCitaRepository;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
 import com.example.proyectoIntegrador.services.AgendaService;
+import com.example.proyectoIntegrador.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class AgendaServiceImpl implements AgendaService {
 
     private final AgendaCitaRepository agendaCitaRepository;
     private final ProyectoRepository proyectoRepository;
+    private final NotificationService notificationService;
 
     @Override
     public List<AgendaCita> getListCitas(int idClient) {
@@ -55,8 +57,13 @@ public class AgendaServiceImpl implements AgendaService {
                 .orElseThrow(() -> new RuntimeException("No hay disponibilidad de citas"));
 
         agendaCitaRepository.insertAgendaCita(dataAppointmentDTO.getDescription(), dataAppointmentDTO.getFecha(),
-                        dataAppointmentDTO.getHora(), dataAppointmentDTO.getEstadoId(), dataAppointmentDTO.getClienteId(), dataAppointmentDTO.getMedicoId(), dataAppointmentDTO.getMascotaId())
+                        time, dataAppointmentDTO.getEstadoId(), dataAppointmentDTO.getClienteId(), dataAppointmentDTO.getMedicoId(), dataAppointmentDTO.getMascotaId())
                 .orElseThrow(() -> new RuntimeException("No se pudo agendar la cita"));
+
+        notificationService.notifyAppointmentCreation(String.valueOf(dataAppointmentDTO.getClienteId()), new DetailAppointment(dataAppointmentDTO.getDescription(),
+                dataAppointmentDTO.getFecha(),
+                dataAppointmentDTO.getHora()));
+
 
         return true;
     }

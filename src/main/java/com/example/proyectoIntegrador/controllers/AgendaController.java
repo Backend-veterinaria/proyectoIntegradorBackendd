@@ -44,6 +44,17 @@ public interface AgendaController {
     ResponseEntity<ResponseGeneric> getVeterinarianAgenda(@ModelAttribute @Valid DataVeterinarianAgendaDTO dto);
 
 
+    /**
+     * Cambia el estado de una cita a confirmada, atendida o no asistió (VET-03). Solo personal:
+     * el veterinario sus propias citas y el administrador cualquiera.
+     */
+    @PatchMapping("/{agendaId}/status")
+    @ResponseBody
+    @PreAuthorize("hasAnyRole('VETERINARIO', 'ADMIN')")
+    ResponseEntity<ResponseGeneric> changeAppointmentStatus(@PathVariable("agendaId") int agendaId,
+                                                            @Valid @RequestBody AppointmentStatusDTO dto);
+
+
     @GetMapping("/AnAppointment/details")
     @ResponseBody
     ResponseEntity<ResponseGeneric> getDetailAppointment(@ModelAttribute @Valid DataDetailAppointmentDTO detailAppointmentDTO, HttpServletRequest request);

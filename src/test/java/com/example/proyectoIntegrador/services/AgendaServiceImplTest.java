@@ -133,6 +133,98 @@ class AgendaServiceImplTest {
                 () -> service.getVeterinarianAgenda(CLIENTE, agenda("20261120", 11, null)));
     }
 
+    // ---------- VET-03: cambio de estado ----------
+
+    private static VeterinarianAgendaItem cita(int medicoId, int estadoId, String estado) {
+        VeterinarianAgendaItem cita = new VeterinarianAgendaItem();
+        cita.setAgendaId(100);
+        cita.setMedicoId(medicoId);
+        cita.setEstadoId(estadoId);
+        cita.setEstado(estado);
+        return cita;
+    }
+
+    @Test
+    void veterinarioMarcaSuCitaComoAtendida() {
+        when(agendaCitaRepository.findAgendaItem(100))
+                .thenReturn(Optional.of(cita(11, 2, "Confirmada")), Optional.of(cita(11, 5, "Atendida")));
+        when(veterinarianRepository.findMedicoIdByClienteId(40)).thenReturn(Optional.of(11));
+        when(agendaCitaRepository.getEstadoDescription(5)).thenReturn(Optional.of("Atendida"));
+        when(agendaCitaRepository.updateEstado(100, 2, 5)).thenReturn(1);
+
+        VeterinarianAgendaItem result = service.changeAppointmentStatus(VETERINARIO, 100, 5);
+
+        assertEquals("Atendida", result.getEstado());
+        verify(agendaCitaRepository).updateEstado(100, 2, 5);
+    }
+
+    @Test
+    void veterinarioNoPuedeCambiarCitasDeOtroVeterinario() {
+        when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(cita(12, 2, "Confirmada")));
+        when(veterinarianRepository.findMedicoIdByClienteId(40)).thenReturn(Optional.of(11));
+
+        assertThrows(AccessDeniedException.class, () -> service.changeAppointmentStatus(VETERINARIO, 100, 5));
+        verify(agendaCitaRepository, never()).updateEstado(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void adminPuedeCambiarCualquierCita() {
+        when(agendaCitaRepository.findAgendaItem(100))
+                .thenReturn(Optional.of(cita(12, 1, "Programada")), Optional.of(cita(12, 6, "No asistio")));
+        when(agendaCitaRepository.getEstadoDescription(6)).thenReturn(Optional.of("No asistio"));
+        when(agendaCitaRepository.updateEstado(100, 1, 6)).thenReturn(1);
+
+        service.changeAppointmentStatus(ADMIN, 100, 6);
+
+        verify(agendaCitaRepository).updateEstado(100, 1, 6);
+    }
+
+    @Test
+    void clienteNoPuedeCambiarEstados() {
+        when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(cita(11, 1, "Programada")));
+
+        assertThrows(AccessDeniedException.class, () -> service.changeAppointmentStatus(CLIENTE, 100, 5));
+    }
+
+    @Test
+    void citaCanceladaNoCambiaDeEstado() {
+        when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(cita(12, 3, "Cancelada")));
+        when(agendaCitaRepository.getEstadoDescription(5)).thenReturn(Optional.of("Atendida"));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> service.changeAppointmentStatus(ADMIN, 100, 5));
+        assertEquals("No se puede cambiar una cita en estado 'Cancelada' a 'Atendida'", e.getMessage());
+        verify(agendaCitaRepository, never()).updateEstado(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void citaInexistenteEsErrorDeNegocio() {
+        when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> service.changeAppointmentStatus(ADMIN, 100, 5));
+        assertEquals("La cita no existe", e.getMessage());
+    }
+
+    @Test
+    void estadoInexistenteEsErrorDeNegocio() {
+        when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(cita(12, 1, "Programada")));
+        when(agendaCitaRepository.getEstadoDescription(99)).thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> service.changeAppointmentStatus(ADMIN, 100, 99));
+        assertEquals("El estado no existe", e.getMessage());
+    }
+
+    @Test
+    void siOtraPersonaCambioElEstadoAntesNoSeSobrescribe() {
+        when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(cita(12, 1, "Programada")));
+        when(agendaCitaRepository.getEstadoDescription(5)).thenReturn(Optional.of("Atendida"));
+        when(agendaCitaRepository.updateEstado(100, 1, 5)).thenReturn(0);
+
+        assertThrows(BusinessException.class, () -> service.changeAppointmentStatus(ADMIN, 100, 5));
+    }
+
     @Test
     void fechaInexistenteEsErrorDeNegocio() {
         when(veterinarianRepository.findMedicoIdByClienteId(40)).thenReturn(Optional.of(11));

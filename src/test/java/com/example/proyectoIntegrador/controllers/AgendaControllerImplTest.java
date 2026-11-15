@@ -140,6 +140,72 @@ class AgendaControllerImplTest {
                 .andExpect(jsonPath("$.responseObj").value("Debe indicar el veterinario (medicoId)"));
     }
 
+    // ---------- VET-03: cambio de estado ----------
+
+    @Test
+    void veterinarioCambiaEstadoDeCita() throws Exception {
+        VeterinarianAgendaItem cita = new VeterinarianAgendaItem();
+        cita.setAgendaId(100);
+        cita.setEstado("Atendida");
+        when(agendaService.changeAppointmentStatus(any(), eq(100), eq(5))).thenReturn(cita);
+
+        mockMvc.perform(patch("/integrador/agendaCita/100/status")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, "dr.perez", Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estadoId\":5}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"))
+                .andExpect(jsonPath("$.responseObj.estado").value("Atendida"));
+    }
+
+    @Test
+    void clienteNoPuedeCambiarEstadoDeCita() throws Exception {
+        mockMvc.perform(patch("/integrador/agendaCita/100/status")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estadoId\":5}"))
+                .andExpect(status().isForbidden());
+
+        verify(agendaService, never()).changeAppointmentStatus(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void veterinarioCambiandoCitaDeOtroDevuelve403() throws Exception {
+        when(agendaService.changeAppointmentStatus(any(), anyInt(), anyInt()))
+                .thenThrow(new AccessDeniedException("Un veterinario solo puede gestionar sus propias citas"));
+
+        mockMvc.perform(patch("/integrador/agendaCita/100/status")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, "dr.perez", Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estadoId\":5}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.responseCode").value("6619"));
+    }
+
+    @Test
+    void transicionNoPermitidaDevuelveMensajeDeNegocio() throws Exception {
+        when(agendaService.changeAppointmentStatus(any(), anyInt(), anyInt()))
+                .thenThrow(new BusinessException("No se puede cambiar una cita en estado 'Cancelada' a 'Atendida'"));
+
+        mockMvc.perform(patch("/integrador/agendaCita/100/status")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, "admin", Role.ADMIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estadoId\":5}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6616"))
+                .andExpect(jsonPath("$.responseObj").value("No se puede cambiar una cita en estado 'Cancelada' a 'Atendida'"));
+    }
+
+    @Test
+    void cambioDeEstadoSinEstadoIdDevuelveErrorDeValidacion() throws Exception {
+        mockMvc.perform(patch("/integrador/agendaCita/100/status")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, "admin", Role.ADMIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6617"));
+    }
+
     @Test
     void errorInternoNoSeEnviaAlCliente() throws Exception {
         when(agendaService.getListCitas(3))

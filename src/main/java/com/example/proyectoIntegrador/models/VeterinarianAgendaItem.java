@@ -8,6 +8,8 @@ import lombok.Data;
 @Data
 public class VeterinarianAgendaItem {
     private Integer agendaId;
+    /** Veterinario asignado a la cita. */
+    private Integer medicoId;
     private String fecha;
     private String hora;
     private String descripcion;

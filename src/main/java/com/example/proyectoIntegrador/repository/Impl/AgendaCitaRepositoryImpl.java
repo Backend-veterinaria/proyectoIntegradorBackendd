@@ -7,6 +7,7 @@ import com.example.proyectoIntegrador.models.VeterinarianAgendaItem;
 import com.example.proyectoIntegrador.repository.AgendaCitaRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
@@ -294,37 +295,72 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
         log.debug("start getAgendaByVeterinarian medico={} fecha={} estado={}", medicoId, fecha, estadoId);
 
         // CAST: PostgreSQL necesita conocer el tipo del parámetro cuando se envía nulo
-        String sql = """
-                SELECT ac.agenda_id, c.fecha, c.hora, c.descripcion, ac.estado_id, ec.descripcion AS estado,
-                       cl.cliente_id, cl.nombre AS cliente_nombre, cl.apellido AS cliente_apellido,
-                       cl.telefono AS cliente_telefono, m.mascota_id, m.nombre AS mascota_nombre
-                FROM agenda_cita ac
-                JOIN cita c ON c.cita_id = ac.cita_id
-                LEFT JOIN estado_cita ec ON ec.estado_id = ac.estado_id
-                LEFT JOIN cliente cl ON cl.cliente_id = ac.cliente_id
-                LEFT JOIN mascota m ON m.mascota_id = ac.mascota_id
+        String sql = SELECT_AGENDA_ITEM + """
                 WHERE ac.medico_id = ?
                   AND c.fecha = ?
                   AND (CAST(? AS INTEGER) IS NULL OR ac.estado_id = ?)
                 ORDER BY c.hora
                 """;
 
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            VeterinarianAgendaItem item = new VeterinarianAgendaItem();
-            item.setAgendaId(rs.getInt("agenda_id"));
-            item.setFecha(rs.getString("fecha"));
-            item.setHora(rs.getString("hora"));
-            item.setDescripcion(rs.getString("descripcion"));
-            item.setEstadoId(rs.getObject("estado_id", Integer.class));
-            item.setEstado(rs.getString("estado"));
-            item.setClienteId(rs.getObject("cliente_id", Integer.class));
-            item.setClienteNombre(joinName(rs.getString("cliente_nombre"), rs.getString("cliente_apellido")));
-            item.setClienteTelefono(rs.getString("cliente_telefono"));
-            item.setMascotaId(rs.getObject("mascota_id", Integer.class));
-            item.setMascotaNombre(rs.getString("mascota_nombre"));
-            return item;
-        }, medicoId, Date.valueOf(fecha), estadoId, estadoId);
+        return jdbcTemplate.query(sql, AGENDA_ITEM_MAPPER, medicoId, Date.valueOf(fecha), estadoId, estadoId);
     }
+
+    @Override
+    public Optional<VeterinarianAgendaItem> findAgendaItem(int agendaId) {
+        log.debug("start findAgendaItem {}", agendaId);
+
+        String sql = SELECT_AGENDA_ITEM + " WHERE ac.agenda_id = ?";
+
+        return jdbcTemplate.query(sql, AGENDA_ITEM_MAPPER, agendaId).stream().findFirst();
+    }
+
+    @Override
+    public Optional<String> getEstadoDescription(int estadoId) {
+        String sql = """
+                SELECT descripcion FROM estado_cita WHERE estado_id = ?
+                """;
+
+        return jdbcTemplate.queryForList(sql, String.class, estadoId).stream().findFirst();
+    }
+
+    @Override
+    public int updateEstado(int agendaId, int currentEstadoId, int newEstadoId) {
+        log.debug("start updateEstado agenda={} {} -> {}", agendaId, currentEstadoId, newEstadoId);
+
+        String sql = """
+                UPDATE agenda_cita SET estado_id = ? WHERE agenda_id = ? AND estado_id = ?
+                """;
+
+        return jdbcTemplate.update(sql, newEstadoId, agendaId, currentEstadoId);
+    }
+
+    private static final String SELECT_AGENDA_ITEM = """
+            SELECT ac.agenda_id, ac.medico_id, c.fecha, c.hora, c.descripcion, ac.estado_id, ec.descripcion AS estado,
+                   cl.cliente_id, cl.nombre AS cliente_nombre, cl.apellido AS cliente_apellido,
+                   cl.telefono AS cliente_telefono, m.mascota_id, m.nombre AS mascota_nombre
+            FROM agenda_cita ac
+            JOIN cita c ON c.cita_id = ac.cita_id
+            LEFT JOIN estado_cita ec ON ec.estado_id = ac.estado_id
+            LEFT JOIN cliente cl ON cl.cliente_id = ac.cliente_id
+            LEFT JOIN mascota m ON m.mascota_id = ac.mascota_id
+            """;
+
+    private static final RowMapper<VeterinarianAgendaItem> AGENDA_ITEM_MAPPER = (rs, rowNum) -> {
+        VeterinarianAgendaItem item = new VeterinarianAgendaItem();
+        item.setAgendaId(rs.getInt("agenda_id"));
+        item.setMedicoId(rs.getObject("medico_id", Integer.class));
+        item.setFecha(rs.getString("fecha"));
+        item.setHora(rs.getString("hora"));
+        item.setDescripcion(rs.getString("descripcion"));
+        item.setEstadoId(rs.getObject("estado_id", Integer.class));
+        item.setEstado(rs.getString("estado"));
+        item.setClienteId(rs.getObject("cliente_id", Integer.class));
+        item.setClienteNombre(joinName(rs.getString("cliente_nombre"), rs.getString("cliente_apellido")));
+        item.setClienteTelefono(rs.getString("cliente_telefono"));
+        item.setMascotaId(rs.getObject("mascota_id", Integer.class));
+        item.setMascotaNombre(rs.getString("mascota_nombre"));
+        return item;
+    };
 
     private static String joinName(String nombre, String apellido) {
         if (nombre == null) {

@@ -1,6 +1,7 @@
 package com.example.proyectoIntegrador.services.Impl;
 
 import com.example.proyectoIntegrador.exceptions.BusinessException;
+import com.example.proyectoIntegrador.enums.AppointmentStatus;
 import com.example.proyectoIntegrador.models.*;
 import com.example.proyectoIntegrador.repository.AgendaCitaRepository;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
@@ -128,6 +129,54 @@ public class AgendaServiceImpl implements AgendaService {
         LocalDate fecha = parseDate(dto.getFecha());
 
         return agendaCitaRepository.getAgendaByVeterinarian(medicoId, fecha, dto.getEstadoId());
+    }
+
+    @Override
+    public VeterinarianAgendaItem changeAppointmentStatus(AuthenticatedUser user, int agendaId, int estadoId) {
+        log.debug("start changeAppointmentStatus agenda={} estado={}", agendaId, estadoId);
+
+        VeterinarianAgendaItem cita = agendaCitaRepository.findAgendaItem(agendaId)
+                .orElseThrow(() -> new BusinessException("La cita no existe"));
+
+        requireCanManage(user, cita);
+
+        String targetDescription = agendaCitaRepository.getEstadoDescription(estadoId)
+                .orElseThrow(() -> new BusinessException("El estado no existe"));
+
+        AppointmentStatus current = AppointmentStatus.fromDescription(cita.getEstado());
+        AppointmentStatus target = AppointmentStatus.fromDescription(targetDescription);
+
+        if (!current.canTransitionTo(target)) {
+            throw new BusinessException("No se puede cambiar una cita en estado '" + cita.getEstado()
+                    + "' a '" + targetDescription + "'");
+        }
+
+        // Solo actualiza si la cita sigue en el estado que se validó
+        if (agendaCitaRepository.updateEstado(agendaId, cita.getEstadoId(), estadoId) == 0) {
+            throw new BusinessException("La cita cambio de estado mientras se actualizaba. Consultela de nuevo");
+        }
+
+        log.info("Cita {} cambiada de {} a {} por el usuario {}", agendaId, current, target, user.userId());
+        return agendaCitaRepository.findAgendaItem(agendaId)
+                .orElseThrow(() -> new RuntimeException("No se encontro la cita recien actualizada"));
+    }
+
+    /**
+     * El administrador gestiona cualquier cita; el veterinario, solo las asignadas a él.
+     */
+    private void requireCanManage(AuthenticatedUser user, VeterinarianAgendaItem cita) {
+        if (user.role() == Role.ADMIN) {
+            return;
+        }
+        if (user.role() == Role.VETERINARIO) {
+            int own = veterinarianRepository.findMedicoIdByClienteId(user.userId())
+                    .orElseThrow(() -> new BusinessException("Su usuario no esta vinculado a un veterinario"));
+            if (cita.getMedicoId() != null && cita.getMedicoId() == own) {
+                return;
+            }
+            throw new AccessDeniedException("Un veterinario solo puede gestionar sus propias citas");
+        }
+        throw new AccessDeniedException("Solo el personal puede cambiar el estado de las citas");
     }
 
     private int resolveMedicoId(AuthenticatedUser user, Integer requestedMedicoId) {

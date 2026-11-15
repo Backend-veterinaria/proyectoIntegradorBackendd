@@ -38,6 +38,26 @@ public interface AgendaCitaRepository {
      */
     List<VeterinarianAgendaItem> getAgendaByVeterinarian(int medicoId, LocalDate fecha, Integer estadoId);
 
+    /**
+     * Una cita por su agenda_id, con su veterinario, cliente, mascota y estado (VET-03).
+     *
+     * @return la cita, o vacío si no existe
+     */
+    Optional<VeterinarianAgendaItem> findAgendaItem(int agendaId);
+
+    /**
+     * @return la descripción del estado en estado_cita, o vacío si el estado no existe
+     */
+    Optional<String> getEstadoDescription(int estadoId);
+
+    /**
+     * Cambia el estado de la cita solo si sigue en el estado esperado (evita pisar un cambio
+     * hecho por otra persona al mismo tiempo). No captura excepciones.
+     *
+     * @return el número de filas actualizadas: 0 si la cita ya no estaba en currentEstadoId
+     */
+    int updateEstado(int agendaId, int currentEstadoId, int newEstadoId);
+
     Optional<InfoMascota> getInfoMascota(int idClient, int mascotaId);
 
     Optional<Boolean> validateExistAppointment(int idAppointment, int idClient);

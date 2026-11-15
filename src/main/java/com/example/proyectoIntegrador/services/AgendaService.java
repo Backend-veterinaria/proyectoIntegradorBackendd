@@ -22,4 +22,13 @@ public interface AgendaService {
      * @throws org.springframework.security.access.AccessDeniedException si un veterinario pide la agenda de otro
      */
     List<VeterinarianAgendaItem> getVeterinarianAgenda(AuthenticatedUser user, DataVeterinarianAgendaDTO dto);
+
+    /**
+     * Cambia el estado de una cita a confirmada, atendida o no asistió (VET-03). Un VETERINARIO solo
+     * puede cambiar sus propias citas; un ADMIN, cualquiera.
+     *
+     * @return la cita con su nuevo estado
+     * @throws org.springframework.security.access.AccessDeniedException si la cita no es del veterinario
+     */
+    VeterinarianAgendaItem changeAppointmentStatus(AuthenticatedUser user, int agendaId, int estadoId);
 }

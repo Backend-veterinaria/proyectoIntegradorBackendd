@@ -129,6 +129,31 @@ public class AgendaControllerImpl implements AgendaController {
     }
 
     @Override
+    public ResponseEntity<ResponseGeneric> changeAppointmentStatus(int agendaId, AppointmentStatusDTO dto) {
+        log.debug("START changeAppointmentStatus");
+
+        try {
+            var cita = agendaService.changeAppointmentStatus(SecurityUtils.currentUser(), agendaId, dto.getEstadoId());
+
+            ResponseGeneric response = new ResponseGeneric();
+            response.setResponseCode(CodesResponse.OK.getCode());
+            response.setResponseDesc(CodesResponse.OK.getDescription());
+            response.setResponseObj(cita);
+            return ResponseEntity.ok().body(response);
+
+        } catch (AccessDeniedException e) {
+            // Se deja pasar para que GlobalExceptionHandler responda 403
+            throw e;
+        } catch (Exception e) {
+            ResponseGeneric responseError = new ResponseGeneric();
+            responseError.setResponseCode(CodesResponse.ERROR_MODIFY_DATA.getCode());
+            responseError.setResponseDesc(CodesResponse.ERROR_MODIFY_DATA.getDescription());
+            responseError.setResponseObj(ErrorMessages.clientMessage(e));
+            return ResponseEntity.status(HttpStatus.OK).body(responseError);
+        }
+    }
+
+    @Override
     public ResponseEntity<ResponseGeneric> getDetailAppointment(DataDetailAppointmentDTO detailAppointmentDTO, HttpServletRequest request) {
 
         log.debug("START getDetailAppointment");

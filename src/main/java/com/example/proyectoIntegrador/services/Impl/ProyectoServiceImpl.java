@@ -9,12 +9,16 @@ import com.example.proyectoIntegrador.repository.ProyectoRepository;
 import com.example.proyectoIntegrador.services.ProyectoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +26,10 @@ import java.util.Random;
 public class ProyectoServiceImpl implements ProyectoService {
 
     private final ProyectoRepository proyectoRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    // Hash BCrypt: $2a$, $2b$ o $2y$, costo de 2 dígitos y 53 caracteres (sal + hash)
+    private static final Pattern BCRYPT_PATTERN = Pattern.compile("^\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}$");
 
     // TODO: ELIMINAR antes de cualquier despliegue. Usuario de demostración quemado para
     //  ingresar a la app sin crear usuarios. Si existe un cliente con este username en la BD
@@ -52,14 +60,45 @@ public class ProyectoServiceImpl implements ProyectoService {
                     return new RuntimeException("Error. El usuario no esta registrado");
                 });
 
-        proyectoRepository.validatePassword(infoUser.getIdClient(), loginDTO.getPassword())
-                .orElseThrow(() -> {
-                    log.debug("Error. Contraseña no valida");
-                    return new RuntimeException("Error. Contraseña no valida");
-                });
+        int userId = Integer.parseInt(infoUser.getIdClient());
+        String stored = proyectoRepository.getPasswordHash(userId).orElse(null);
+
+        if (!passwordMatches(userId, loginDTO.getPassword(), stored)) {
+            log.debug("Error. Contraseña no valida");
+            throw new RuntimeException("Error. Contraseña no valida");
+        }
 
         return infoUser;
 
+    }
+
+    /**
+     * Verifica la contraseña contra lo almacenado. Si lo almacenado es un hash BCrypt se usa
+     * matches(); si no, es una contraseña antigua en texto plano: se compara directamente y,
+     * si coincide, se reemplaza por su hash BCrypt (migración al iniciar sesión).
+     */
+    private boolean passwordMatches(int userId, String rawPassword, String stored) {
+        if (stored == null || rawPassword == null) {
+            return false;
+        }
+
+        if (BCRYPT_PATTERN.matcher(stored).matches()) {
+            return passwordEncoder.matches(rawPassword, stored);
+        }
+
+        // TODO: eliminar esta rama cuando todas las contraseñas estén migradas a BCrypt.
+        boolean matches = MessageDigest.isEqual(
+                stored.getBytes(StandardCharsets.UTF_8), rawPassword.getBytes(StandardCharsets.UTF_8));
+
+        if (matches) {
+            proyectoRepository.updatePasswordHash(userId, passwordEncoder.encode(rawPassword))
+                    .ifPresentOrElse(
+                            rows -> log.info("Contraseña del usuario {} migrada a BCrypt", userId),
+                            // El login sigue siendo válido; se intentará migrar de nuevo en el próximo inicio de sesión
+                            () -> log.warn("No se pudo migrar a BCrypt la contraseña del usuario {}", userId));
+        }
+
+        return matches;
     }
 
     // Transaccional: si falla guardar la contraseña o la sesión, se revierte también el cliente
@@ -95,7 +134,7 @@ public class ProyectoServiceImpl implements ProyectoService {
 
             var idUser = proyectoRepository.getIdUser(registerDTO.getUsername()).orElseThrow(() -> new RuntimeException("Error. No se encontro el usuario"));
 
-            proyectoRepository.savePasswordUser(idUser, registerDTO.getPassword()).orElseThrow(() -> new RuntimeException("Error, al guardar la contraseña"));
+            proyectoRepository.savePasswordUser(idUser, passwordEncoder.encode(registerDTO.getPassword())).orElseThrow(() -> new RuntimeException("Error, al guardar la contraseña"));
 
             int numeroAleatorio = random.nextInt(100); // 0 a 99
             proyectoRepository.setSessiones(numeroAleatorio, idUser);

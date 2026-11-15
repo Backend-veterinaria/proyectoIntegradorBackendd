@@ -132,27 +132,33 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
     }
 
     @Override
-    public Optional<Boolean> validatePassword(String idClient, String password) {
-        log.debug("start validatePassword");
-        int id = Integer.parseInt(idClient);
+    public Optional<String> getPasswordHash(int userId) {
+        log.debug("start getPasswordHash");
 
         String sql = """
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM user_credentials
-                    WHERE usuario_id = ? AND password_hash = ?
-                )
+                SELECT password_hash FROM user_credentials WHERE usuario_id = ?
                 """;
 
         try {
-            // Ejecuta la consulta y devuelve el resultado
-            Boolean exists = jdbcTemplate.queryForObject(sql, Boolean.class, id, password);
-
-            // Optional vacío si la contraseña no coincide, para que orElseThrow rechace el login
-            return Boolean.TRUE.equals(exists) ? Optional.of(true) : Optional.empty();
-
+            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, String.class, userId));
         } catch (Exception e) {
-            log.error("Error validando la contraseña para el usuario {}: {}", idClient, e.getMessage());
+            log.error("Error obteniendo la contraseña del usuario {}: {}", userId, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<Integer> updatePasswordHash(int userId, String passwordHash) {
+        log.debug("start updatePasswordHash");
+
+        String sql = """
+                UPDATE user_credentials SET password_hash = ? WHERE usuario_id = ?
+                """;
+
+        try {
+            return Optional.of(jdbcTemplate.update(sql, passwordHash, userId));
+        } catch (Exception e) {
+            log.error("Error actualizando la contraseña del usuario {}: {}", userId, e.getMessage());
             return Optional.empty();
         }
     }

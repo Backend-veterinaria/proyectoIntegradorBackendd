@@ -17,6 +17,8 @@ Use the Maven wrapper (`mvnw.cmd` on Windows, `./mvnw` in Git Bash):
 
 The local machine runs JDK 23, where javac no longer runs annotation processors by default; `pom.xml` sets `maven.compiler.proc=full` so Lombok still works. Don't remove it — without it the build fails with hundreds of "cannot find symbol" errors (`log`, getters/setters).
 
+Passwords are hashed with BCrypt (`config/PasswordConfig`, only `spring-security-crypto` is on the classpath — full Spring Security/JWT is not set up yet). Legacy plaintext passwords in `user_credentials.password_hash` are re-hashed on the user's next successful login (`ProyectoServiceImpl.passwordMatches`).
+
 `ProyectoServiceImpl` has a hardcoded demo login (`demo` / `demo123`) marked `TODO: ELIMINAR` — intentional for demos, must be removed before any deployment.
 
 `ProyectoIntegradorApplicationTests` is a `@SpringBootTest` context-load test and needs the database reachable (the app also won't start without it). The other tests (`@WebMvcTest` controller tests and Mockito service tests) run without a DB: `./mvnw test -Dtest='*ControllerImplTest,*ServiceImplTest'`.

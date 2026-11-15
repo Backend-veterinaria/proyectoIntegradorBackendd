@@ -66,20 +66,28 @@ public interface ProyectoRepository {
     Optional<InfoUser> validateUser(String username);
 
     /**
-     * Valida la contraseña para un ID de cliente dado verificando si la contraseña existe en la base de datos.
+     * Obtiene la contraseña almacenada (hash BCrypt o, en usuarios antiguos, texto plano) del usuario.
      *
-     * @param idClient el ID del cliente cuya contraseña se va a validar
-     * @param password la contraseña a validar
-     * @return un Optional que contiene Boolean.TRUE si la contraseña es válida, Boolean.FALSE si es inválida,
-     * o un Optional vacío si ocurre un error durante la validación
+     * @param userId el ID del usuario
+     * @return un Optional con el valor guardado en password_hash, o vacío si no existe o hay un error
      */
-    Optional<Boolean> validatePassword(String idClient, String password);
+    Optional<String> getPasswordHash(int userId);
+
+    /**
+     * Reemplaza la contraseña almacenada del usuario. Se usa para migrar a BCrypt las contraseñas
+     * antiguas guardadas en texto plano.
+     *
+     * @param userId       el ID del usuario
+     * @param passwordHash el nuevo hash BCrypt
+     * @return un Optional con el número de filas actualizadas, o vacío si ocurre un error
+     */
+    Optional<Integer> updatePasswordHash(int userId, String passwordHash);
 
     /**
      * Guarda la contraseña de un usuario en la base de datos.
      *
      * @param idClient el ID del cliente cuya contraseña se va a guardar
-     * @param password la contraseña que se va a guardar
+     * @param password el hash BCrypt de la contraseña (nunca la contraseña en texto plano)
      * @return un Optional que contiene el número de filas afectadas si la operación es exitosa,
      * o un Optional vacío si ocurre un error
      */

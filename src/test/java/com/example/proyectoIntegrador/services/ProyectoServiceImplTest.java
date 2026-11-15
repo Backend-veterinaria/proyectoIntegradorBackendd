@@ -6,17 +6,26 @@ import com.example.proyectoIntegrador.models.LoginDTO;
 import com.example.proyectoIntegrador.models.RegisterDTO;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
 import com.example.proyectoIntegrador.services.Impl.ProyectoServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,11 +33,109 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ProyectoServiceImplTest {
 
+    // Costo 4 (el mínimo) para que las pruebas sean rápidas
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(4);
+
     @Mock
     private ProyectoRepository proyectoRepository;
 
-    @InjectMocks
     private ProyectoServiceImpl proyectoService;
+
+    @BeforeEach
+    void setUp() {
+        proyectoService = new ProyectoServiceImpl(proyectoRepository, passwordEncoder);
+    }
+
+    private void givenUserWithStoredPassword(String stored) {
+        InfoUser user = new InfoUser();
+        user.setIdClient("5");
+        when(proyectoRepository.validateUser("ana")).thenReturn(Optional.of(user));
+        when(proyectoRepository.getPasswordHash(5)).thenReturn(Optional.ofNullable(stored));
+    }
+
+    private static LoginDTO login(String username, String password) {
+        LoginDTO login = new LoginDTO();
+        login.setUsername(username);
+        login.setPassword(password);
+        return login;
+    }
+
+    @Test
+    void loginConHashBcryptCorrecto() {
+        givenUserWithStoredPassword(passwordEncoder.encode("secreta123"));
+
+        assertDoesNotThrow(() -> proyectoService.loginService(login("ana", "secreta123")));
+        verify(proyectoRepository, never()).updatePasswordHash(anyInt(), anyString());
+    }
+
+    @Test
+    void loginConHashBcryptYPasswordIncorrectaEsRechazado() {
+        givenUserWithStoredPassword(passwordEncoder.encode("secreta123"));
+
+        assertThrows(RuntimeException.class, () -> proyectoService.loginService(login("ana", "mala")));
+    }
+
+    @Test
+    void loginConPasswordAntiguaEnTextoPlanoLaMigraABcrypt() {
+        givenUserWithStoredPassword("vieja123");
+        when(proyectoRepository.updatePasswordHash(eq(5), anyString())).thenReturn(Optional.of(1));
+
+        assertDoesNotThrow(() -> proyectoService.loginService(login("ana", "vieja123")));
+
+        ArgumentCaptor<String> hash = ArgumentCaptor.forClass(String.class);
+        verify(proyectoRepository).updatePasswordHash(eq(5), hash.capture());
+        assertNotEquals("vieja123", hash.getValue());
+        assertTrue(passwordEncoder.matches("vieja123", hash.getValue()));
+    }
+
+    @Test
+    void loginConPasswordAntiguaIncorrectaEsRechazadoYNoMigra() {
+        givenUserWithStoredPassword("vieja123");
+
+        assertThrows(RuntimeException.class, () -> proyectoService.loginService(login("ana", "mala")));
+        verify(proyectoRepository, never()).updatePasswordHash(anyInt(), anyString());
+    }
+
+    @Test
+    void loginPermitidoAunqueFalleLaMigracion() {
+        givenUserWithStoredPassword("vieja123");
+        when(proyectoRepository.updatePasswordHash(eq(5), anyString())).thenReturn(Optional.empty());
+
+        assertDoesNotThrow(() -> proyectoService.loginService(login("ana", "vieja123")));
+    }
+
+    @Test
+    void loginSinPasswordAlmacenadaEsRechazado() {
+        givenUserWithStoredPassword(null);
+
+        assertThrows(RuntimeException.class, () -> proyectoService.loginService(login("ana", "lo-que-sea")));
+    }
+
+    @Test
+    void loginDemoFuncionaSinUsuarioEnBd() {
+        when(proyectoRepository.validateUser("demo")).thenReturn(Optional.empty());
+
+        assertEquals("1", proyectoService.loginService(login("demo", "demo123")).getIdClient());
+    }
+
+    @Test
+    void registroGuardaLaPasswordCifrada() {
+        RegisterDTO dto = new RegisterDTO();
+        dto.setUsername("ana");
+        dto.setEmail("ana@correo.com");
+        dto.setPassword("secreta123");
+        when(proyectoRepository.existsUsernameOrEmail("ana", "ana@correo.com")).thenReturn(false);
+        when(proyectoRepository.registerUser(any())).thenReturn(Optional.of(1));
+        when(proyectoRepository.getIdUser("ana")).thenReturn(Optional.of(5));
+        when(proyectoRepository.savePasswordUser(eq(5), anyString())).thenReturn(Optional.of(1));
+
+        proyectoService.registerUser(dto);
+
+        ArgumentCaptor<String> saved = ArgumentCaptor.forClass(String.class);
+        verify(proyectoRepository).savePasswordUser(eq(5), saved.capture());
+        assertNotEquals("secreta123", saved.getValue());
+        assertTrue(passwordEncoder.matches("secreta123", saved.getValue()));
+    }
 
     @Test
     void registroDuplicadoLanzaExcepcionYNoInserta() {
@@ -39,30 +146,5 @@ class ProyectoServiceImplTest {
 
         assertThrows(UserAlreadyExistsException.class, () -> proyectoService.registerUser(dto));
         verify(proyectoRepository, never()).registerUser(any());
-    }
-
-    @Test
-    void loginConPasswordIncorrectaEsRechazado() {
-        InfoUser user = new InfoUser();
-        user.setIdClient("5");
-        when(proyectoRepository.validateUser("ana")).thenReturn(Optional.of(user));
-        when(proyectoRepository.validatePassword("5", "mala")).thenReturn(Optional.empty());
-
-        LoginDTO login = new LoginDTO();
-        login.setUsername("ana");
-        login.setPassword("mala");
-
-        assertThrows(RuntimeException.class, () -> proyectoService.loginService(login));
-    }
-
-    @Test
-    void loginDemoFuncionaSinUsuarioEnBd() {
-        when(proyectoRepository.validateUser("demo")).thenReturn(Optional.empty());
-
-        LoginDTO login = new LoginDTO();
-        login.setUsername("demo");
-        login.setPassword("demo123");
-
-        assertEquals("1", proyectoService.loginService(login).getIdClient());
     }
 }

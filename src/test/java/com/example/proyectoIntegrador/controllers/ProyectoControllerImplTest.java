@@ -2,16 +2,23 @@ package com.example.proyectoIntegrador.controllers;
 
 import com.example.proyectoIntegrador.controllers.Impl.ProyectoControllerImpl;
 import com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException;
+import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.ResponseRegister;
+import com.example.proyectoIntegrador.security.AuthenticatedUser;
+import com.example.proyectoIntegrador.security.JwtService;
+import com.example.proyectoIntegrador.security.SecurityConfig;
 import com.example.proyectoIntegrador.services.ProyectoService;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -21,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProyectoControllerImpl.class)
+@Import({SecurityConfig.class, JwtService.class})
 class ProyectoControllerImplTest {
 
     private static final String VALID_REGISTER = """
@@ -33,6 +41,41 @@ class ProyectoControllerImplTest {
 
     @MockBean
     private ProyectoService proyectoService;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Test
+    void loginCorrectoDevuelveTokenValido() throws Exception {
+        InfoUser user = new InfoUser();
+        user.setIdClient("5");
+        user.setUsername("ana");
+        when(proyectoService.loginService(any())).thenReturn(user);
+
+        String body = mockMvc.perform(post("/integrador/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"ana\",\"password\":\"secreta123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"))
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.expiresIn").value(28800))
+                .andReturn().getResponse().getContentAsString();
+
+        String token = JsonPath.read(body, "$.token");
+        assertEquals(new AuthenticatedUser(5, "ana"), jwtService.parseToken(token).orElseThrow());
+    }
+
+    @Test
+    void loginFallidoNoDevuelveToken() throws Exception {
+        when(proyectoService.loginService(any())).thenThrow(new RuntimeException("Error. Contraseña no valida"));
+
+        mockMvc.perform(post("/integrador/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"ana\",\"password\":\"mala\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("1231"))
+                .andExpect(jsonPath("$.token").doesNotExist());
+    }
 
     @Test
     void loginSinPasswordDevuelveErrorDeValidacion() throws Exception {

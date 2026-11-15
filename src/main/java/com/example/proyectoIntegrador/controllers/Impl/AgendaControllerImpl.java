@@ -4,6 +4,7 @@ import com.example.proyectoIntegrador.controllers.AgendaController;
 import com.example.proyectoIntegrador.enums.CodesResponse;
 import com.example.proyectoIntegrador.models.*;
 import com.example.proyectoIntegrador.services.AgendaService;
+import com.example.proyectoIntegrador.security.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class AgendaControllerImpl implements AgendaController {
     @Override
     public ResponseEntity<ResponseGeneric> getListAgend(DataUserDTO dataUser, HttpServletRequest request) {
         log.debug("START getListAgend");
+        SecurityUtils.requireSameClient(dataUser.getIdClient());
 
         try {
             List<AgendaCita> userInfoLogin = agendaService.getListCitas(dataUser.getIdClient());
@@ -47,6 +49,7 @@ public class AgendaControllerImpl implements AgendaController {
     @Override
     public ResponseEntity<ResponseGeneric> scheduleAnAppointment(DataAppointmentDTO dataAppointmentDTO, HttpServletRequest request) {
         log.debug("START scheduleAnAppointment");
+        SecurityUtils.requireSameClient(dataAppointmentDTO.getClienteId());
 
         try {
             Boolean userInfoLogin = agendaService.scheduleAnAppointment(dataAppointmentDTO);
@@ -76,6 +79,7 @@ public class AgendaControllerImpl implements AgendaController {
     @Override
     public ResponseEntity<ResponseGeneric> cancelledAppointment(DataCancelledAppointmentDTO dataAppointmentDTO, HttpServletRequest request) {
         log.debug("START cancelledAppointment");
+        SecurityUtils.requireSameClient(dataAppointmentDTO.getIdCliente());
 
         try {
             var infoAppointment = agendaService.cancelledAppointment(dataAppointmentDTO);
@@ -100,7 +104,9 @@ public class AgendaControllerImpl implements AgendaController {
     @Override
     public ResponseEntity<ResponseGeneric> getDetailAppointment(DataDetailAppointmentDTO detailAppointmentDTO, HttpServletRequest request) {
 
-        log.debug("START scheduleAnAppointment");
+        log.debug("START getDetailAppointment");
+        SecurityUtils.requireSameClient(detailAppointmentDTO.getIdClient());
+        SecurityUtils.requireSameUsername(detailAppointmentDTO.getUsername());
 
         try {
             AgendaCitaDetail infoAppointment = agendaService.getDetailAppointment(detailAppointmentDTO);

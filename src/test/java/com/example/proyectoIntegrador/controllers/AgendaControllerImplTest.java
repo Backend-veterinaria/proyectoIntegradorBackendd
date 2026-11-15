@@ -1,38 +1,111 @@
 package com.example.proyectoIntegrador.controllers;
 
 import com.example.proyectoIntegrador.controllers.Impl.AgendaControllerImpl;
+import com.example.proyectoIntegrador.security.JwtService;
+import com.example.proyectoIntegrador.security.SecurityConfig;
 import com.example.proyectoIntegrador.services.AgendaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AgendaControllerImpl.class)
+@Import({SecurityConfig.class, JwtService.class})
 class AgendaControllerImplTest {
 
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private JwtService jwtService;
+
     @MockBean
     private AgendaService agendaService;
 
+    private String bearer(int userId, String username) {
+        return "Bearer " + jwtService.generateToken(userId, username);
+    }
+
+    @Test
+    void sinTokenDevuelve401() throws Exception {
+        mockMvc.perform(get("/integrador/agendaCita/list").param("idClient", "3"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.responseCode").value("6618"));
+
+        verify(agendaService, never()).getListCitas(anyInt());
+    }
+
+    @Test
+    void tokenInvalidoDevuelve401() throws Exception {
+        mockMvc.perform(get("/integrador/agendaCita/list").param("idClient", "3")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer token.falso.123"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.responseCode").value("6618"));
+    }
+
+    @Test
+    void listarCitasConTokenDelMismoCliente() throws Exception {
+        when(agendaService.getListCitas(3)).thenReturn(List.of());
+
+        mockMvc.perform(get("/integrador/agendaCita/list").param("idClient", "3")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"));
+    }
+
+    @Test
+    void listarCitasDeOtroClienteDevuelve403() throws Exception {
+        mockMvc.perform(get("/integrador/agendaCita/list").param("idClient", "4")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.responseCode").value("6619"));
+
+        verify(agendaService, never()).getListCitas(anyInt());
+    }
+
+    @Test
+    void cancelarCitaDeOtroClienteDevuelve403() throws Exception {
+        mockMvc.perform(patch("/integrador/agendaCita/cancelledAppointment")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idCliente\":4,\"idAppointment\":10}"))
+                .andExpect(status().isForbidden());
+
+        verify(agendaService, never()).cancelledAppointment(any());
+    }
+
+    @Test
+    void detalleConUsernameDeOtroUsuarioDevuelve403() throws Exception {
+        mockMvc.perform(get("/integrador/agendaCita/AnAppointment/details")
+                        .param("idAppointment", "10").param("idClient", "3").param("username", "otro")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana")))
+                .andExpect(status().isForbidden());
+
+        verify(agendaService, never()).getDetailAppointment(any());
+    }
+
     @Test
     void listarCitasSinIdClientDevuelveErrorDeValidacion() throws Exception {
-        mockMvc.perform(get("/integrador/agendaCita/list"))
+        mockMvc.perform(get("/integrador/agendaCita/list")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.responseCode").value("6617"))
                 .andExpect(jsonPath("$.responseObj", hasItem("idClient: required field idClient")));
@@ -41,17 +114,9 @@ class AgendaControllerImplTest {
     }
 
     @Test
-    void listarCitasConIdClientValido() throws Exception {
-        when(agendaService.getListCitas(3)).thenReturn(List.of());
-
-        mockMvc.perform(get("/integrador/agendaCita/list").param("idClient", "3"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.responseCode").value("0000"));
-    }
-
-    @Test
     void agendarCitaConFechaMalFormadaDevuelveErrorDeValidacion() throws Exception {
         mockMvc.perform(post("/integrador/agendaCita/scheduleAnAppointment")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, "ana"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"estadoId":1,"clienteId":1,"medicoId":1,"mascotaId":1,

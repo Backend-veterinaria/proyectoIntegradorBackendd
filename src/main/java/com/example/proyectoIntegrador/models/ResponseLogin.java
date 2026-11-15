@@ -9,4 +9,9 @@ import lombok.EqualsAndHashCode;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ResponseLogin extends ResponseGeneric{
 
+    /** Token JWT que el cliente debe enviar en el encabezado Authorization: Bearer <token>. */
+    private String token;
+    /** Segundos de validez del token. */
+    private Long expiresIn;
+
 }

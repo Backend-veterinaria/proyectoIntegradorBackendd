@@ -3,8 +3,10 @@ package com.example.proyectoIntegrador.exceptions;
 import com.example.proyectoIntegrador.enums.CodesResponse;
 import com.example.proyectoIntegrador.models.ResponseGeneric;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -39,6 +41,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ResponseGeneric> handleUnreadable(HttpMessageNotReadableException e) {
         log.debug("Cuerpo de la peticion no legible: {}", e.getMessage());
         return ResponseEntity.ok(buildError(List.of("El cuerpo de la peticion no es un JSON valido")));
+    }
+
+    /**
+     * Un usuario autenticado intenta acceder a datos de otro cliente (SecurityUtils).
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ResponseGeneric> handleAccessDenied(AccessDeniedException e) {
+        log.debug("Acceso denegado: {}", e.getMessage());
+        ResponseGeneric response = new ResponseGeneric();
+        response.setResponseCode(CodesResponse.ERROR_FORBIDDEN.getCode());
+        response.setResponseDesc(CodesResponse.ERROR_FORBIDDEN.getDescription());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     private ResponseGeneric buildError(List<String> errors) {

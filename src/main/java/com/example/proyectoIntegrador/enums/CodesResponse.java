@@ -13,6 +13,8 @@ public enum CodesResponse {
     ERROR_GET_DATA("6615", "Error. No se pudo consultar el registro"),
     ERROR_MODIFY_DATA("6616", "Error. No se pudo modificar el registro"),
     ERROR_VALIDATION("6617", "Error. Los datos enviados no son validos"),
+    ERROR_UNAUTHORIZED("6618", "Error. Debe iniciar sesion o el token no es valido"),
+    ERROR_FORBIDDEN("6619", "Error. No tiene permiso para acceder a este recurso"),
     ;
 
 

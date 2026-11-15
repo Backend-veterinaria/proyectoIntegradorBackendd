@@ -3,6 +3,7 @@ package com.example.proyectoIntegrador.controllers.Impl;
 import com.example.proyectoIntegrador.controllers.ProyectoController;
 import com.example.proyectoIntegrador.enums.CodesResponse;
 import com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException;
+import com.example.proyectoIntegrador.security.JwtService;
 import com.example.proyectoIntegrador.models.*;
 import com.example.proyectoIntegrador.services.ProyectoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProyectoControllerImpl implements ProyectoController {
 
     private final ProyectoService proyectoService;
+    private final JwtService jwtService;
 
     @Override
     public ResponseEntity<ResponseLogin> login(LoginDTO loginDTO, HttpServletRequest request) {
@@ -31,6 +33,9 @@ public class ProyectoControllerImpl implements ProyectoController {
             responseLogin.setResponseCode(CodesResponse.OK.getCode());
             responseLogin.setResponseDesc(CodesResponse.OK.getDescription());
             responseLogin.setResponseObj(userInfoLogin);
+            responseLogin.setToken(jwtService.generateToken(
+                    Integer.parseInt(userInfoLogin.getIdClient()), userInfoLogin.getUsername()));
+            responseLogin.setExpiresIn(jwtService.getExpirationSeconds());
 
             return ResponseEntity.ok().body(responseLogin);
 

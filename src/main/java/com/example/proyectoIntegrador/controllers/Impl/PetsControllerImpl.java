@@ -7,6 +7,7 @@ import com.example.proyectoIntegrador.models.DataUserDTO;
 import com.example.proyectoIntegrador.models.ResponseGeneric;
 import com.example.proyectoIntegrador.models.ResponseLogin;
 import com.example.proyectoIntegrador.services.PetsServices;
+import com.example.proyectoIntegrador.security.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class PetsControllerImpl implements PetsController {
     @Override
     public ResponseEntity<ResponseGeneric> addPets(DataMascotaDTO dataMascotaDTO, HttpServletRequest request) {
         log.debug("START addPets");
+        SecurityUtils.requireSameClient(dataMascotaDTO.getIdCliente());
 
         try {
             var userInfoLogin = petsServices.addPet(dataMascotaDTO);
@@ -57,7 +59,8 @@ public class PetsControllerImpl implements PetsController {
      */
     @Override
     public ResponseEntity<ResponseGeneric> getListPets(DataUserDTO dataUserDTO, HttpServletRequest request) {
-        log.debug("START addPets");
+        log.debug("START getListPets");
+        SecurityUtils.requireSameClient(dataUserDTO.getIdClient());
 
         try {
             var userInfoLogin = petsServices.getListPets(dataUserDTO);

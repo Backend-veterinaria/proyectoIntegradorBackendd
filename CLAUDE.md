@@ -17,7 +17,15 @@ Use the Maven wrapper (`mvnw.cmd` on Windows, `./mvnw` in Git Bash):
 
 The local machine runs JDK 23, where javac no longer runs annotation processors by default; `pom.xml` sets `maven.compiler.proc=full` so Lombok still works. Don't remove it — without it the build fails with hundreds of "cannot find symbol" errors (`log`, getters/setters).
 
-Passwords are hashed with BCrypt (`config/PasswordConfig`, only `spring-security-crypto` is on the classpath — full Spring Security/JWT is not set up yet). Legacy plaintext passwords in `user_credentials.password_hash` are re-hashed on the user's next successful login (`ProyectoServiceImpl.passwordMatches`).
+### Security (package `security/`)
+
+- Stateless JWT auth (JJWT, HMAC-SHA256). `POST /integrador/login` returns `token` and `expiresIn` at the top level of `ResponseLogin` (next to `responseObj`). Every other endpoint except `login`/`register` requires `Authorization: Bearer <token>`; the SSE endpoint also accepts `?token=` because browser `EventSource` can't send headers.
+- Endpoints still receive client ids in their DTOs, but controllers call `SecurityUtils.requireSameClient(...)` (and `requireSameUsername`) *before* their `try/catch` so the `AccessDeniedException` reaches `GlobalExceptionHandler` (403, code `6619`). Do the same in new endpoints that take a client id. Missing/invalid token → 401, code `6618` (written by `SecurityConfig`). Unlike other errors these use real HTTP status codes.
+- Config: `jwt.secret` / `jwt.expiration-minutes` / `app.cors.allowed-origins` in `application.properties`, overridable by env vars `JWT_SECRET`, `JWT_EXPIRATION_MINUTES`, `CORS_ALLOWED_ORIGINS`.
+- `@WebMvcTest` tests must `@Import({SecurityConfig.class, JwtService.class})` and send a token from `jwtService.generateToken(...)`, otherwise Boot's default security applies.
+- Roles are not implemented yet (token has no role claim; `SecurityUtils` has a TODO for admin/vet access).
+
+Passwords are hashed with BCrypt (`config/PasswordConfig`). Legacy plaintext passwords in `user_credentials.password_hash` are re-hashed on the user's next successful login (`ProyectoServiceImpl.passwordMatches`).
 
 `ProyectoServiceImpl` has a hardcoded demo login (`demo` / `demo123`) marked `TODO: ELIMINAR` — intentional for demos, must be removed before any deployment.
 

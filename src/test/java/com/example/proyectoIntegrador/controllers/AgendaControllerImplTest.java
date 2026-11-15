@@ -2,6 +2,7 @@ package com.example.proyectoIntegrador.controllers;
 
 import com.example.proyectoIntegrador.controllers.Impl.AgendaControllerImpl;
 import com.example.proyectoIntegrador.security.JwtService;
+import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.security.SecurityConfig;
 import com.example.proyectoIntegrador.services.AgendaService;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,33 @@ class AgendaControllerImplTest {
     private AgendaService agendaService;
 
     private String bearer(int userId, String username) {
-        return "Bearer " + jwtService.generateToken(userId, username);
+        return bearer(userId, username, Role.CLIENTE);
+    }
+
+    private String bearer(int userId, String username, Role role) {
+        return "Bearer " + jwtService.generateToken(userId, username, role);
+    }
+
+    @Test
+    void veterinarioPuedeListarCitasDeCualquierCliente() throws Exception {
+        when(agendaService.getListCitas(4)).thenReturn(List.of());
+
+        mockMvc.perform(get("/integrador/agendaCita/list").param("idClient", "4")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(9, "dr.perez", Role.VETERINARIO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"));
+    }
+
+    @Test
+    void adminPuedeCancelarCitaDeOtroCliente() throws Exception {
+        when(agendaService.cancelledAppointment(any())).thenReturn(true);
+
+        mockMvc.perform(patch("/integrador/agendaCita/cancelledAppointment")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, "admin", Role.ADMIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idCliente\":4,\"idAppointment\":10}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"));
     }
 
     @Test

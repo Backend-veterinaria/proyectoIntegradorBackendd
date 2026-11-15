@@ -2,8 +2,6 @@ package com.example.proyectoIntegrador.models;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -30,7 +28,4 @@ public class RegisterDTO {
     // max 72: límite de BCrypt (se usará al cifrar las contraseñas)
     @Size(min = 8, max = 72, message = "password must have between 8 and 72 characters")
     private String password;
-    @NotNull(message = "you must specify the rolUser field")
-    @Positive(message = "rolUser must be positive")
-    private Integer rolUser;
 }

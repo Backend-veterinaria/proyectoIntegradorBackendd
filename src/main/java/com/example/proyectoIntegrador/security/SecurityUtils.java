@@ -5,9 +5,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
- * Acceso al usuario autenticado y verificaciones de que la petición solo toca sus propios datos.
- * Los endpoints siguen recibiendo el id del cliente en la petición, pero se comprueba que sea
- * el mismo del token: así un cliente no puede consultar o modificar datos de otro cambiando el id.
+ * Acceso al usuario autenticado y verificaciones de que la petición solo toca datos permitidos.
+ * Los endpoints siguen recibiendo el id del cliente en la petición: un CLIENTE solo puede usar
+ * su propio id, mientras que ADMIN y VETERINARIO pueden actuar sobre cualquier cliente
+ * (por ejemplo, agendar o consultar citas en su nombre).
  */
 public final class SecurityUtils {
 
@@ -22,16 +23,39 @@ public final class SecurityUtils {
         throw new AccessDeniedException("No hay un usuario autenticado");
     }
 
-    // TODO (roles, SEC-05): permitir que administradores y veterinarios accedan a datos de otros clientes.
+    /**
+     * Permite el acceso si el usuario es personal (ADMIN o VETERINARIO) o si el id es el suyo.
+     */
     public static void requireSameClient(Integer clientId) {
-        if (clientId == null || clientId != currentUser().userId()) {
+        AuthenticatedUser user = currentUser();
+        if (user.role().isStaff()) {
+            return;
+        }
+        if (clientId == null || clientId != user.userId()) {
             throw new AccessDeniedException("No puede acceder a datos de otro cliente");
         }
     }
 
+    /**
+     * Permite el acceso si el usuario es personal (ADMIN o VETERINARIO) o si el username es el suyo.
+     */
     public static void requireSameUsername(String username) {
-        if (username == null || !username.equals(currentUser().username())) {
+        AuthenticatedUser user = currentUser();
+        if (user.role().isStaff()) {
+            return;
+        }
+        if (username == null || !username.equals(user.username())) {
             throw new AccessDeniedException("No puede acceder a datos de otro usuario");
+        }
+    }
+
+    /**
+     * Exige que el id sea el del propio usuario, sin excepción por rol. Se usa en recursos
+     * personales, como el canal de notificaciones.
+     */
+    public static void requireOwnClient(Integer clientId) {
+        if (clientId == null || clientId != currentUser().userId()) {
+            throw new AccessDeniedException("Solo puede acceder a sus propios recursos");
         }
     }
 }

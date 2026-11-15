@@ -13,4 +13,6 @@ public class InfoUser {
     private String phone;
     private String email;
     private String username;
+    /** ADMIN, VETERINARIO o CLIENTE. */
+    private String role;
 }

@@ -5,6 +5,7 @@ import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.LoginDTO;
 import com.example.proyectoIntegrador.models.RegisterDTO;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
+import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.services.Impl.ProyectoServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -115,7 +116,9 @@ class ProyectoServiceImplTest {
     void loginDemoFuncionaSinUsuarioEnBd() {
         when(proyectoRepository.validateUser("demo")).thenReturn(Optional.empty());
 
-        assertEquals("1", proyectoService.loginService(login("demo", "demo123")).getIdClient());
+        InfoUser demo = proyectoService.loginService(login("demo", "demo123"));
+        assertEquals("1", demo.getIdClient());
+        assertEquals("ADMIN", demo.getRole());
     }
 
     @Test
@@ -125,7 +128,8 @@ class ProyectoServiceImplTest {
         dto.setEmail("ana@correo.com");
         dto.setPassword("secreta123");
         when(proyectoRepository.existsUsernameOrEmail("ana", "ana@correo.com")).thenReturn(false);
-        when(proyectoRepository.registerUser(any())).thenReturn(Optional.of(1));
+        when(proyectoRepository.getRoleId(Role.CLIENTE)).thenReturn(Optional.of(3));
+        when(proyectoRepository.registerUser(any(), eq(3))).thenReturn(Optional.of(1));
         when(proyectoRepository.getIdUser("ana")).thenReturn(Optional.of(5));
         when(proyectoRepository.savePasswordUser(eq(5), anyString())).thenReturn(Optional.of(1));
 
@@ -138,6 +142,18 @@ class ProyectoServiceImplTest {
     }
 
     @Test
+    void registroSinRolClienteEnBdFallaYNoInserta() {
+        RegisterDTO dto = new RegisterDTO();
+        dto.setUsername("ana");
+        dto.setEmail("ana@correo.com");
+        when(proyectoRepository.existsUsernameOrEmail("ana", "ana@correo.com")).thenReturn(false);
+        when(proyectoRepository.getRoleId(Role.CLIENTE)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () -> proyectoService.registerUser(dto));
+        verify(proyectoRepository, never()).registerUser(any(), anyInt());
+    }
+
+    @Test
     void registroDuplicadoLanzaExcepcionYNoInserta() {
         RegisterDTO dto = new RegisterDTO();
         dto.setUsername("ana");
@@ -145,6 +161,6 @@ class ProyectoServiceImplTest {
         when(proyectoRepository.existsUsernameOrEmail("ana", "ana@correo.com")).thenReturn(true);
 
         assertThrows(UserAlreadyExistsException.class, () -> proyectoService.registerUser(dto));
-        verify(proyectoRepository, never()).registerUser(any());
+        verify(proyectoRepository, never()).registerUser(any(), anyInt());
     }
 }

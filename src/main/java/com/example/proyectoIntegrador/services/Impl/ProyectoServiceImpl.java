@@ -6,6 +6,7 @@ import com.example.proyectoIntegrador.models.LoginDTO;
 import com.example.proyectoIntegrador.models.RegisterDTO;
 import com.example.proyectoIntegrador.models.ResponseRegister;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
+import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.services.ProyectoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +34,8 @@ public class ProyectoServiceImpl implements ProyectoService {
 
     // TODO: ELIMINAR antes de cualquier despliegue. Usuario de demostración quemado para
     //  ingresar a la app sin crear usuarios. Si existe un cliente con este username en la BD
-    //  se usan sus datos (para que tenga citas y mascotas); si no, se devuelve DEMO_USER_ID.
+    //  se usan sus datos (para que tenga citas y mascotas); si no, se devuelve DEMO_USER_ID con
+    //  rol ADMIN, para poder recorrer todas las pantallas.
     private static final String DEMO_USERNAME = "demo";
     private static final String DEMO_PASSWORD = "demo123";
     private static final String DEMO_USER_ID = "1";
@@ -50,6 +52,7 @@ public class ProyectoServiceImpl implements ProyectoService {
                 demo.setName("Usuario");
                 demo.setLastName("Demo");
                 demo.setUsername(DEMO_USERNAME);
+                demo.setRole(Role.ADMIN.name());
                 return demo;
             });
         }
@@ -129,7 +132,12 @@ public class ProyectoServiceImpl implements ProyectoService {
 
             //Registro de solo usuarios
             registerDTO.setFechaRegistro(LocalDate.parse(today.format(formatter)));
-            proyectoRepository.registerUser(registerDTO)
+            // El registro público siempre crea clientes; administradores y veterinarios no se
+            // pueden auto-registrar (se ignora cualquier rol que envíe el frontend).
+            int rolCliente = proyectoRepository.getRoleId(Role.CLIENTE)
+                    .orElseThrow(() -> new RuntimeException("No existe el rol cliente en la tabla rol"));
+
+            proyectoRepository.registerUser(registerDTO, rolCliente)
                     .orElseThrow(() -> new RuntimeException("Error al registrar usuario"));
 
             var idUser = proyectoRepository.getIdUser(registerDTO.getUsername()).orElseThrow(() -> new RuntimeException("Error. No se encontro el usuario"));

@@ -4,6 +4,7 @@ import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.RegisterClient;
 import com.example.proyectoIntegrador.models.RegisterDTO;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
+import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.utils.ClienteRowMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,13 +23,13 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
     }
 
     @Override
-    public Optional<Integer> registerUser(RegisterDTO registerDTO) {
+    public Optional<Integer> registerUser(RegisterDTO registerDTO, int rolId) {
         log.debug("start registerUser");
 
         try {
 
-            String sql = "INSERT INTO cliente (nombre, apellido, direccion, telefono, email, fecha_registro, estado_cliente, username) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO cliente (nombre, apellido, direccion, telefono, email, fecha_registro, estado_cliente, username, rol_id) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             return Optional.of(jdbcTemplate.update(sql,
                     registerDTO.getNombre(),
@@ -38,7 +39,8 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
                     registerDTO.getEmail(),
                     registerDTO.getFechaRegistro(),
                     true,
-                    registerDTO.getUsername()
+                    registerDTO.getUsername(),
+                    rolId
             ));
 
         } catch (Exception e) {
@@ -61,6 +63,30 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
 
         } catch (Exception e) {
             log.debug("No se pudo encontrar el usuario: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+
+    @Override
+    public Optional<Integer> getRoleId(Role role) {
+        log.debug("start getRoleId {}", role);
+
+        // Mismo criterio de Role.fromDescription: se busca por la descripción, no por un id fijo
+        String pattern = switch (role) {
+            case ADMIN -> "%ADMIN%";
+            case VETERINARIO -> "%VETERIN%";
+            case CLIENTE -> "%CLIENT%";
+        };
+
+        String sql = """
+                SELECT rol_id FROM rol WHERE UPPER(descripcion) LIKE ? ORDER BY rol_id LIMIT 1
+                """;
+
+        try {
+            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, Integer.class, pattern));
+        } catch (Exception e) {
+            log.error("No se encontro el rol {} en la tabla rol: {}", role, e.getMessage());
             return Optional.empty();
         }
     }
@@ -109,8 +135,11 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
         try {
 
             String sql = """
-                    SELECT cliente_id, nombre, apellido, direccion, telefono, email, fecha_registro, estado_cliente, username FROM cliente
-                    WHERE username = ?
+                    SELECT c.cliente_id, c.nombre, c.apellido, c.direccion, c.telefono, c.email, c.fecha_registro,
+                           c.estado_cliente, c.username, r.descripcion AS rol_descripcion
+                    FROM cliente c
+                    LEFT JOIN rol r ON r.rol_id = c.rol_id
+                    WHERE c.username = ?
                     """;
             return Optional.ofNullable(jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
                 InfoUser data = new InfoUser();
@@ -121,6 +150,7 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
                 data.setPhone(rs.getString("telefono"));
                 data.setEmail(rs.getString("email"));
                 data.setUsername(rs.getString("username"));
+                data.setRole(Role.fromDescription(rs.getString("rol_descripcion")).name());
                 return data;
             }, username));
 

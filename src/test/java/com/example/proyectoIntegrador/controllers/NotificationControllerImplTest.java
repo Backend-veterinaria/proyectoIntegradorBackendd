@@ -2,6 +2,7 @@ package com.example.proyectoIntegrador.controllers;
 
 import com.example.proyectoIntegrador.controllers.Impl.NotificationControllerImpl;
 import com.example.proyectoIntegrador.security.JwtService;
+import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.security.SecurityConfig;
 import com.example.proyectoIntegrador.services.NotificationService;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ class NotificationControllerImplTest {
     void conexionSseConTokenEnParametro() throws Exception {
         when(notificationService.stablishConnection("3")).thenReturn(new SseEmitter());
 
-        mockMvc.perform(get(SSE_URL).param("token", jwtService.generateToken(3, "ana")))
+        mockMvc.perform(get(SSE_URL).param("token", jwtService.generateToken(3, "ana", Role.CLIENTE)))
                 .andExpect(request().asyncStarted());
 
         verify(notificationService).stablishConnection("3");
@@ -57,7 +58,17 @@ class NotificationControllerImplTest {
     void conexionSseDeOtroClienteDevuelve403() throws Exception {
         mockMvc.perform(get(SSE_URL)
                         .param("client_id", "4")
-                        .param("token", jwtService.generateToken(3, "ana")))
+                        .param("token", jwtService.generateToken(3, "ana", Role.CLIENTE)))
+                .andExpect(status().isForbidden());
+
+        verify(notificationService, never()).stablishConnection(anyString());
+    }
+
+    @Test
+    void niElAdminPuedeAbrirElCanalDeOtroCliente() throws Exception {
+        mockMvc.perform(get(SSE_URL)
+                        .param("client_id", "4")
+                        .param("token", jwtService.generateToken(1, "admin", Role.ADMIN)))
                 .andExpect(status().isForbidden());
 
         verify(notificationService, never()).stablishConnection(anyString());

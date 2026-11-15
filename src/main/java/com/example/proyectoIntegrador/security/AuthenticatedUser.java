@@ -6,6 +6,7 @@ package com.example.proyectoIntegrador.security;
  *
  * @param userId   id del cliente (claim "sub" del token)
  * @param username nombre de usuario (claim "username")
+ * @param role     rol del usuario (claim "role")
  */
-public record AuthenticatedUser(int userId, String username) {
+public record AuthenticatedUser(int userId, String username, Role role) {
 }

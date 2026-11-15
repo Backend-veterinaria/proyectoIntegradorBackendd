@@ -6,6 +6,7 @@ import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.ResponseRegister;
 import com.example.proyectoIntegrador.security.AuthenticatedUser;
 import com.example.proyectoIntegrador.security.JwtService;
+import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.security.SecurityConfig;
 import com.example.proyectoIntegrador.services.ProyectoService;
 import com.jayway.jsonpath.JsonPath;
@@ -62,7 +63,27 @@ class ProyectoControllerImplTest {
                 .andReturn().getResponse().getContentAsString();
 
         String token = JsonPath.read(body, "$.token");
-        assertEquals(new AuthenticatedUser(5, "ana"), jwtService.parseToken(token).orElseThrow());
+        // Sin rol en InfoUser se asume CLIENTE
+        assertEquals(new AuthenticatedUser(5, "ana", Role.CLIENTE), jwtService.parseToken(token).orElseThrow());
+    }
+
+    @Test
+    void elTokenDelLoginLlevaElRolDelUsuario() throws Exception {
+        InfoUser user = new InfoUser();
+        user.setIdClient("9");
+        user.setUsername("dr.perez");
+        user.setRole("VETERINARIO");
+        when(proyectoService.loginService(any())).thenReturn(user);
+
+        String body = mockMvc.perform(post("/integrador/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"dr.perez\",\"password\":\"secreta123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseObj.role").value("VETERINARIO"))
+                .andReturn().getResponse().getContentAsString();
+
+        String token = JsonPath.read(body, "$.token");
+        assertEquals(Role.VETERINARIO, jwtService.parseToken(token).orElseThrow().role());
     }
 
     @Test
@@ -100,8 +121,7 @@ class ProyectoControllerImplTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.responseCode").value("6617"))
                 .andExpect(jsonPath("$.responseObj", hasItem("email: email is not valid")))
-                .andExpect(jsonPath("$.responseObj", hasItem("password: password must have between 8 and 72 characters")))
-                .andExpect(jsonPath("$.responseObj", hasItem("rolUser: you must specify the rolUser field")));
+                .andExpect(jsonPath("$.responseObj", hasItem("password: password must have between 8 and 72 characters")));
 
         verify(proyectoService, never()).registerUser(any());
     }
@@ -110,7 +130,7 @@ class ProyectoControllerImplTest {
     void jsonMalFormadoDevuelveErrorDeValidacion() throws Exception {
         mockMvc.perform(post("/integrador/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rolUser\":\"abc\"}"))
+                        .content("{\"nombre\": ["))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.responseCode").value("6617"));
     }

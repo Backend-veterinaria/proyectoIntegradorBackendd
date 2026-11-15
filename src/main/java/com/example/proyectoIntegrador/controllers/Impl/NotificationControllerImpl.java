@@ -21,7 +21,7 @@ public class NotificationControllerImpl implements NotificationController {
         // si no se envía, se usa el id del token.
         int userId = SecurityUtils.currentUser().userId();
         if (client_id != null && !client_id.equals(String.valueOf(userId))) {
-            SecurityUtils.requireSameClient(-1);
+            SecurityUtils.requireOwnClient(-1);
         }
         return notificationService.stablishConnection(String.valueOf(userId));
     }

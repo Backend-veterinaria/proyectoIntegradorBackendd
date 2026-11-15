@@ -4,6 +4,7 @@ package com.example.proyectoIntegrador.repository;
 import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.RegisterClient;
 import com.example.proyectoIntegrador.models.RegisterDTO;
+import com.example.proyectoIntegrador.security.Role;
 
 import java.util.Optional;
 
@@ -13,10 +14,19 @@ public interface ProyectoRepository {
      * Registra un nuevo usuario en la base de datos utilizando el objeto RegisterDTO proporcionado.
      *
      * @param registerDTO el objeto de transferencia de datos que contiene los detalles de registro del usuario
+     * @param rolId       el id (tabla rol) del rol que se asigna al usuario
      * @return un Optional que contiene el número de filas afectadas si la operación es exitosa,
      * o un Optional vacío si ocurre una excepción
      */
-    Optional<Integer> registerUser(RegisterDTO registerDTO);
+    Optional<Integer> registerUser(RegisterDTO registerDTO, int rolId);
+
+    /**
+     * Busca en la tabla rol el id del rol dado, por su descripción.
+     *
+     * @param role el rol a buscar
+     * @return un Optional con el rol_id, o vacío si no existe un rol con esa descripción
+     */
+    Optional<Integer> getRoleId(Role role);
 
     /**
      * Obtiene la información de un cliente basado en los datos proporcionados en el objeto RegisterDTO.

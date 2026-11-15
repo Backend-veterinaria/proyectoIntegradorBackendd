@@ -24,6 +24,7 @@ import java.util.Optional;
 public class JwtService {
 
     private static final String CLAIM_USERNAME = "username";
+    private static final String CLAIM_ROLE = "role";
 
     private final SecretKey key;
     private final Duration expiration;
@@ -35,11 +36,12 @@ public class JwtService {
         this.expiration = Duration.ofMinutes(expirationMinutes);
     }
 
-    public String generateToken(int userId, String username) {
+    public String generateToken(int userId, String username, Role role) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim(CLAIM_USERNAME, username)
+                .claim(CLAIM_ROLE, role.name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(expiration)))
                 .signWith(key)
@@ -60,7 +62,8 @@ public class JwtService {
 
             return Optional.of(new AuthenticatedUser(
                     Integer.parseInt(claims.getSubject()),
-                    claims.get(CLAIM_USERNAME, String.class)));
+                    claims.get(CLAIM_USERNAME, String.class),
+                    Role.fromName(claims.get(CLAIM_ROLE, String.class))));
 
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("Token JWT no valido: {}", e.getMessage());

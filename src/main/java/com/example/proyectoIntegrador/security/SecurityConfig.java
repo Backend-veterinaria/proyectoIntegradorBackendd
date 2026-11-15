@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -24,6 +25,8 @@ import java.io.IOException;
 import java.util.List;
 
 @Configuration
+// Permite restringir endpoints por rol con @PreAuthorize("hasRole('ADMIN')") en el controlador
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean

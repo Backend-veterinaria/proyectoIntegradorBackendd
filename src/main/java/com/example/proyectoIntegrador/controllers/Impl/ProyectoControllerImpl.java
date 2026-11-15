@@ -4,6 +4,7 @@ import com.example.proyectoIntegrador.controllers.ProyectoController;
 import com.example.proyectoIntegrador.enums.CodesResponse;
 import com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException;
 import com.example.proyectoIntegrador.security.JwtService;
+import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.models.*;
 import com.example.proyectoIntegrador.services.ProyectoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,7 +35,8 @@ public class ProyectoControllerImpl implements ProyectoController {
             responseLogin.setResponseDesc(CodesResponse.OK.getDescription());
             responseLogin.setResponseObj(userInfoLogin);
             responseLogin.setToken(jwtService.generateToken(
-                    Integer.parseInt(userInfoLogin.getIdClient()), userInfoLogin.getUsername()));
+                    Integer.parseInt(userInfoLogin.getIdClient()), userInfoLogin.getUsername(),
+                    Role.fromName(userInfoLogin.getRole())));
             responseLogin.setExpiresIn(jwtService.getExpirationSeconds());
 
             return ResponseEntity.ok().body(responseLogin);

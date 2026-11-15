@@ -23,7 +23,8 @@ The local machine runs JDK 23, where javac no longer runs annotation processors 
 - Endpoints still receive client ids in their DTOs, but controllers call `SecurityUtils.requireSameClient(...)` (and `requireSameUsername`) *before* their `try/catch` so the `AccessDeniedException` reaches `GlobalExceptionHandler` (403, code `6619`). Do the same in new endpoints that take a client id. Missing/invalid token → 401, code `6618` (written by `SecurityConfig`). Unlike other errors these use real HTTP status codes.
 - Config: `jwt.secret` / `jwt.expiration-minutes` / `app.cors.allowed-origins` in `application.properties`, overridable by env vars `JWT_SECRET`, `JWT_EXPIRATION_MINUTES`, `CORS_ALLOWED_ORIGINS`.
 - `@WebMvcTest` tests must `@Import({SecurityConfig.class, JwtService.class})` and send a token from `jwtService.generateToken(...)`, otherwise Boot's default security applies.
-- Roles are not implemented yet (token has no role claim; `SecurityUtils` has a TODO for admin/vet access).
+- Roles (`security/Role`: ADMIN, VETERINARIO, CLIENTE) are resolved from `rol.descripcion` text (contains ADMIN / VETERIN / MEDIC), never by hardcoded `rol_id`; unknown or null → CLIENTE. The role is a `role` claim in the JWT, a `ROLE_*` authority, and `InfoUser.role` in the login response. `requireSameClient`/`requireSameUsername` let ADMIN and VETERINARIO act on any client; `requireOwnClient` is strict (used for the SSE channel). `@EnableMethodSecurity` is on, so admin-only endpoints can use `@PreAuthorize("hasRole('ADMIN')")`.
+- Public `/register` always assigns the CLIENTE role (looked up with `getRoleId(Role.CLIENTE)`); staff accounts are created directly in the DB for now.
 
 Passwords are hashed with BCrypt (`config/PasswordConfig`). Legacy plaintext passwords in `user_credentials.password_hash` are re-hashed on the user's next successful login (`ProyectoServiceImpl.passwordMatches`).
 

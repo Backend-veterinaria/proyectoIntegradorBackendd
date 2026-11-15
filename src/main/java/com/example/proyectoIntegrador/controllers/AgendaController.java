@@ -4,6 +4,7 @@ import com.example.proyectoIntegrador.models.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,6 +32,16 @@ public interface AgendaController {
     @PatchMapping("/cancelledAppointment")
     @ResponseBody
     ResponseEntity<ResponseGeneric> cancelledAppointment(@Valid @RequestBody DataCancelledAppointmentDTO dataAppointmentDTO, HttpServletRequest request);
+
+
+    /**
+     * Agenda de un veterinario en un día (VET-02). Solo personal: el veterinario ve la suya y el
+     * administrador la de cualquier veterinario (indicando medicoId).
+     */
+    @GetMapping("/veterinarian")
+    @ResponseBody
+    @PreAuthorize("hasAnyRole('VETERINARIO', 'ADMIN')")
+    ResponseEntity<ResponseGeneric> getVeterinarianAgenda(@ModelAttribute @Valid DataVeterinarianAgendaDTO dto);
 
 
     @GetMapping("/AnAppointment/details")

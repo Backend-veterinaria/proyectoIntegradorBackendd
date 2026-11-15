@@ -171,4 +171,16 @@ public class VeterinarianRepositoryImpl implements VeterinarianRepository {
 
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, clienteId));
     }
+
+    @Override
+    public Optional<Integer> findMedicoIdByClienteId(int clienteId) {
+        String sql = """
+                SELECT m.medico_id
+                FROM medico m
+                JOIN personal p ON p.personal_id = m.identificacion_medico
+                WHERE p.cliente_id = ?
+                """;
+
+        return jdbcTemplate.queryForList(sql, Integer.class, clienteId).stream().findFirst();
+    }
 }

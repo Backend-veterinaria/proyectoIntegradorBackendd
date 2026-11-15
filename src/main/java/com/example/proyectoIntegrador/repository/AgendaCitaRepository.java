@@ -3,6 +3,7 @@ package com.example.proyectoIntegrador.repository;
 import com.example.proyectoIntegrador.models.AgendaCita;
 import com.example.proyectoIntegrador.models.AgendaCitaDetail;
 import com.example.proyectoIntegrador.models.InfoMascota;
+import com.example.proyectoIntegrador.models.VeterinarianAgendaItem;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -28,6 +29,14 @@ public interface AgendaCitaRepository {
     Optional<Boolean> hayDisponibilidadCita(LocalDate fechaDeseada, LocalTime horaDeseada);
 
     Optional<AgendaCitaDetail> getDetailAppointment(int idAgenda, int idClient);
+
+    /**
+     * Citas asignadas a un veterinario en un día, ordenadas por hora (VET-02).
+     *
+     * @param estadoId opcional: si no es nulo, solo las citas en ese estado
+     * @return la lista de citas (vacía si no tiene citas ese día)
+     */
+    List<VeterinarianAgendaItem> getAgendaByVeterinarian(int medicoId, LocalDate fecha, Integer estadoId);
 
     Optional<InfoMascota> getInfoMascota(int idClient, int mascotaId);
 

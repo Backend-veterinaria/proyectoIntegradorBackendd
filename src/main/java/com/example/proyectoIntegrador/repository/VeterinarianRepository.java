@@ -69,4 +69,11 @@ public interface VeterinarianRepository {
      * personal o si su registro de personal está activo. No captura excepciones.
      */
     boolean isStaffActive(int clienteId);
+
+    /**
+     * Busca el medico_id del veterinario vinculado a un usuario (personal.cliente_id).
+     *
+     * @return el medico_id, o vacío si el usuario no está vinculado a un veterinario
+     */
+    Optional<Integer> findMedicoIdByClienteId(int clienteId);
 }

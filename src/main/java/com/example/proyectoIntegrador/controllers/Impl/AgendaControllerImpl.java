@@ -8,6 +8,7 @@ import com.example.proyectoIntegrador.services.AgendaService;
 import com.example.proyectoIntegrador.security.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -98,6 +99,31 @@ public class AgendaControllerImpl implements AgendaController {
             responseError.setResponseDesc(CodesResponse.ERROR_MODIFY_DATA.getDescription());
             responseError.setResponseObj(ErrorMessages.clientMessage(e));
 
+            return ResponseEntity.status(HttpStatus.OK).body(responseError);
+        }
+    }
+
+    @Override
+    public ResponseEntity<ResponseGeneric> getVeterinarianAgenda(DataVeterinarianAgendaDTO dto) {
+        log.debug("START getVeterinarianAgenda");
+
+        try {
+            var agenda = agendaService.getVeterinarianAgenda(SecurityUtils.currentUser(), dto);
+
+            ResponseGeneric response = new ResponseGeneric();
+            response.setResponseCode(CodesResponse.OK.getCode());
+            response.setResponseDesc(CodesResponse.OK.getDescription());
+            response.setResponseObj(agenda);
+            return ResponseEntity.ok().body(response);
+
+        } catch (AccessDeniedException e) {
+            // Se deja pasar para que GlobalExceptionHandler responda 403
+            throw e;
+        } catch (Exception e) {
+            ResponseGeneric responseError = new ResponseGeneric();
+            responseError.setResponseCode(CodesResponse.ERROR_GET_DATA.getCode());
+            responseError.setResponseDesc(CodesResponse.ERROR_GET_DATA.getDescription());
+            responseError.setResponseObj(ErrorMessages.clientMessage(e));
             return ResponseEntity.status(HttpStatus.OK).body(responseError);
         }
     }

@@ -4,6 +4,10 @@ import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.models.*;
 import com.example.proyectoIntegrador.repository.AgendaCitaRepository;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
+import com.example.proyectoIntegrador.repository.VeterinarianRepository;
+import com.example.proyectoIntegrador.security.AuthenticatedUser;
+import com.example.proyectoIntegrador.security.Role;
+import org.springframework.security.access.AccessDeniedException;
 import com.example.proyectoIntegrador.services.AgendaService;
 import com.example.proyectoIntegrador.services.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +17,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.List;
 
 @Service
@@ -23,6 +29,11 @@ public class AgendaServiceImpl implements AgendaService {
     private final AgendaCitaRepository agendaCitaRepository;
     private final ProyectoRepository proyectoRepository;
     private final NotificationService notificationService;
+    private final VeterinarianRepository veterinarianRepository;
+
+    // STRICT con 'uuuu': rechaza fechas inexistentes como 20261332 o 20260230
+    private static final DateTimeFormatter STRICT_DATE =
+            DateTimeFormatter.ofPattern("uuuuMMdd").withResolverStyle(ResolverStyle.STRICT);
 
     @Override
     public List<AgendaCita> getListCitas(int idClient) {
@@ -107,6 +118,47 @@ public class AgendaServiceImpl implements AgendaService {
                 .orElseThrow(() -> new BusinessException("No se pudo cancelar la cita programada"));
 
         return true;
+    }
+
+    @Override
+    public List<VeterinarianAgendaItem> getVeterinarianAgenda(AuthenticatedUser user, DataVeterinarianAgendaDTO dto) {
+        log.debug("start getVeterinarianAgenda");
+
+        int medicoId = resolveMedicoId(user, dto.getMedicoId());
+        LocalDate fecha = parseDate(dto.getFecha());
+
+        return agendaCitaRepository.getAgendaByVeterinarian(medicoId, fecha, dto.getEstadoId());
+    }
+
+    private int resolveMedicoId(AuthenticatedUser user, Integer requestedMedicoId) {
+        if (user.role() == Role.VETERINARIO) {
+            int own = veterinarianRepository.findMedicoIdByClienteId(user.userId())
+                    .orElseThrow(() -> new BusinessException("Su usuario no esta vinculado a un veterinario"));
+            if (requestedMedicoId != null && requestedMedicoId != own) {
+                throw new AccessDeniedException("Un veterinario solo puede consultar su propia agenda");
+            }
+            return own;
+        }
+
+        if (user.role() == Role.ADMIN) {
+            if (requestedMedicoId == null) {
+                throw new BusinessException("Debe indicar el veterinario (medicoId)");
+            }
+            veterinarianRepository.findById(requestedMedicoId)
+                    .orElseThrow(() -> new BusinessException("El veterinario no existe"));
+            return requestedMedicoId;
+        }
+
+        // El controlador ya lo restringe con @PreAuthorize; esto es una segunda barrera
+        throw new AccessDeniedException("Solo el personal puede consultar la agenda de un veterinario");
+    }
+
+    private static LocalDate parseDate(String fecha) {
+        try {
+            return LocalDate.parse(fecha, STRICT_DATE);
+        } catch (DateTimeParseException e) {
+            throw new BusinessException("La fecha no es valida");
+        }
     }
 
 }

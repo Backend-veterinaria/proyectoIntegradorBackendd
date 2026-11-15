@@ -3,6 +3,10 @@ package com.example.proyectoIntegrador.controllers;
 import com.example.proyectoIntegrador.controllers.Impl.AgendaControllerImpl;
 import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.exceptions.ErrorMessages;
+import com.example.proyectoIntegrador.models.VeterinarianAgendaItem;
+import com.example.proyectoIntegrador.security.AuthenticatedUser;
+import org.springframework.security.access.AccessDeniedException;
+import static org.mockito.ArgumentMatchers.eq;
 import com.example.proyectoIntegrador.security.JwtService;
 import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.security.SecurityConfig;
@@ -71,6 +75,69 @@ class AgendaControllerImplTest {
                         .content("{\"idCliente\":4,\"idAppointment\":10}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.responseCode").value("0000"));
+    }
+
+    private static final String VET_AGENDA_URL = "/integrador/agendaCita/veterinarian";
+
+    @Test
+    void veterinarioConsultaSuAgenda() throws Exception {
+        VeterinarianAgendaItem item = new VeterinarianAgendaItem();
+        item.setAgendaId(100);
+        item.setHora("10:00:00");
+        when(agendaService.getVeterinarianAgenda(any(), any())).thenReturn(List.of(item));
+
+        mockMvc.perform(get(VET_AGENDA_URL).param("fecha", "20261120")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, "dr.perez", Role.VETERINARIO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"))
+                .andExpect(jsonPath("$.responseObj[0].agendaId").value(100));
+
+        // El servicio recibe el usuario del token
+        verify(agendaService).getVeterinarianAgenda(eq(new AuthenticatedUser(40, "dr.perez", Role.VETERINARIO)), any());
+    }
+
+    @Test
+    void clienteNoPuedeConsultarAgendaDeVeterinario() throws Exception {
+        mockMvc.perform(get(VET_AGENDA_URL).param("fecha", "20261120").param("medicoId", "11")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.responseCode").value("6619"));
+
+        verify(agendaService, never()).getVeterinarianAgenda(any(), any());
+    }
+
+    @Test
+    void veterinarioConsultandoAgendaDeOtroDevuelve403() throws Exception {
+        when(agendaService.getVeterinarianAgenda(any(), any()))
+                .thenThrow(new AccessDeniedException("Un veterinario solo puede consultar su propia agenda"));
+
+        mockMvc.perform(get(VET_AGENDA_URL).param("fecha", "20261120").param("medicoId", "12")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, "dr.perez", Role.VETERINARIO)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.responseCode").value("6619"));
+    }
+
+    @Test
+    void agendaConFechaMalFormadaDevuelveErrorDeValidacion() throws Exception {
+        mockMvc.perform(get(VET_AGENDA_URL).param("fecha", "2026-11-20")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, "admin", Role.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6617"))
+                .andExpect(jsonPath("$.responseObj", hasItem("fecha: fecha must have format yyyyMMdd")));
+
+        verify(agendaService, never()).getVeterinarianAgenda(any(), any());
+    }
+
+    @Test
+    void errorDeNegocioEnAgendaSeMuestraAlUsuario() throws Exception {
+        when(agendaService.getVeterinarianAgenda(any(), any()))
+                .thenThrow(new BusinessException("Debe indicar el veterinario (medicoId)"));
+
+        mockMvc.perform(get(VET_AGENDA_URL).param("fecha", "20261120")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, "admin", Role.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6615"))
+                .andExpect(jsonPath("$.responseObj").value("Debe indicar el veterinario (medicoId)"));
     }
 
     @Test

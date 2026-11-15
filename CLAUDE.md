@@ -19,7 +19,7 @@ The local machine runs JDK 23, where javac no longer runs annotation processors 
 
 `ProyectoServiceImpl` has a hardcoded demo login (`demo` / `demo123`) marked `TODO: ELIMINAR` — intentional for demos, must be removed before any deployment.
 
-The only test is a `@SpringBootTest` context-load test, so it needs the database reachable.
+`ProyectoIntegradorApplicationTests` is a `@SpringBootTest` context-load test and needs the database reachable (the app also won't start without it). The other tests (`@WebMvcTest` controller tests and Mockito service tests) run without a DB: `./mvnw test -Dtest='*ControllerImplTest,*ServiceImplTest'`.
 
 ## Database
 
@@ -30,7 +30,7 @@ PostgreSQL at `jdbc:postgresql://localhost:5432/postgres` (credentials in `src/m
 Layered: `controllers` → `services` → `repository`, with every layer split into an interface plus an `Impl/` subpackage class.
 
 - **Controllers**: Routing annotations (`@RequestMapping`, `@GetMapping`, `@Valid`, etc.) are declared on the **interface** (`controllers/*Controller.java`); the `Impl` class only carries `@RestController` and implements the methods. Add new endpoints to the interface first. All routes are under `/integrador/...`. GET endpoints bind query params via `@ModelAttribute` DTOs; POST/PATCH use `@RequestBody`.
-- **Response envelope**: Every endpoint returns `ResponseEntity<ResponseGeneric>` (`responseCode`, `responseDesc`, `responseObj`). Codes come from `enums/CodesResponse` (`"0000"` = OK). Errors are caught in the controller and returned with **HTTP 200** and an error code, with the exception message in `responseObj` — the client distinguishes success by `responseCode`, not HTTP status. Follow this pattern and add new codes to `CodesResponse`.
+- **Response envelope**: Every endpoint returns `ResponseEntity<ResponseGeneric>` (`responseCode`, `responseDesc`, `responseObj`). Codes come from `enums/CodesResponse` (`"0000"` = OK). Errors are caught in the controller and returned with **HTTP 200** and an error code, with the exception message in `responseObj` — the client distinguishes success by `responseCode`, not HTTP status. Follow this pattern and add new codes to `CodesResponse`. Bean Validation failures (`@Valid` on `@RequestBody`/`@ModelAttribute`, malformed JSON) happen before the controller and are turned into the same envelope with code `6617` by `exceptions/GlobalExceptionHandler`. In DTOs use `@NotBlank` only on `String`; numeric fields are `Integer` with `@NotNull`/`@Positive` (a primitive `int` defaults to 0 and `@NotBlank` on it throws at runtime).
 - **Services**: Business validation is done by calling repository checks that return `Optional` and chaining `.orElseThrow(() -> new RuntimeException("..."))`; the exception message becomes the client-facing error.
 - **Repositories**: Plain `JdbcTemplate` with SQL text blocks and inline lambda row mappers (or `utils/ClienteRowMapper`). Methods return `Optional<...>`, catch exceptions internally, log them, and return `Optional.empty()` — so a DB error looks the same as "not found" to the service.
 - **Models**: Lombok `@Data` POJOs/DTOs in `models/` (request DTOs are named `Data*DTO`); selector (dropdown) models in `models/selectors/`.

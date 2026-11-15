@@ -67,6 +67,22 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
 
 
     @Override
+    public boolean existsUsernameOrEmail(String username, String email) {
+        log.debug("start existsUsernameOrEmail");
+
+        String sql = """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM cliente
+                    WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)
+                )
+                """;
+
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, username, email));
+    }
+
+
+    @Override
     public Optional<Integer> getIdUser(String userName) {
         log.debug("Obtener informacion del cliente");
 

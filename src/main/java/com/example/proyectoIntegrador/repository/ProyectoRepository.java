@@ -38,6 +38,17 @@ public interface ProyectoRepository {
     Optional<Integer> setSessiones(int codeSession, int userId);
 
     /**
+     * Indica si ya existe un cliente con el username o el email dados (sin distinguir mayúsculas).
+     * A diferencia de los demás métodos, no captura las excepciones: si la consulta falla,
+     * el registro debe fallar en lugar de asumir que el usuario no existe.
+     *
+     * @param username el nombre de usuario a verificar
+     * @param email    el correo a verificar
+     * @return true si ya existe un cliente con ese username o email
+     */
+    boolean existsUsernameOrEmail(String username, String email);
+
+    /**
      * Recupera el ID de un usuario basado en su nombre de usuario.
      *
      * @param userName el nombre de usuario del cual se desea obtener el ID

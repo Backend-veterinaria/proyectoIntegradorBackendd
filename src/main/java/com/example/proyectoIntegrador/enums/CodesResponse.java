@@ -12,6 +12,7 @@ public enum CodesResponse {
     ERROR_SAVE_AGEND("6612", "Error. No se pudo agendar la cita"),
     ERROR_GET_DATA("6615", "Error. No se pudo consultar el registro"),
     ERROR_MODIFY_DATA("6616", "Error. No se pudo modificar el registro"),
+    ERROR_VALIDATION("6617", "Error. Los datos enviados no son validos"),
     ;
 
 

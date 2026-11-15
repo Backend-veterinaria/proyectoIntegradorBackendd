@@ -1,6 +1,10 @@
 package com.example.proyectoIntegrador.models;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -16,12 +20,17 @@ public class RegisterDTO {
     @NotBlank(message = "you must specify the telefono field")
     private String telefono;
     @NotBlank(message = "you must specify the email field")
+    @Email(message = "email is not valid")
     private String email;
     private LocalDate fechaRegistro;
     @NotBlank(message = "you must specify the username field")
+    @Size(min = 3, max = 50, message = "username must have between 3 and 50 characters")
     private String username;
     @NotBlank(message = "you must specify the password field")
+    // max 72: límite de BCrypt (se usará al cifrar las contraseñas)
+    @Size(min = 8, max = 72, message = "password must have between 8 and 72 characters")
     private String password;
-    @NotBlank(message = "you must specify the rolUser field")
-    private int rolUser;
+    @NotNull(message = "you must specify the rolUser field")
+    @Positive(message = "rolUser must be positive")
+    private Integer rolUser;
 }

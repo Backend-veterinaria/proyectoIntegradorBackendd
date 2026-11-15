@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.services.Impl;
 
+import com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException;
 import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.LoginDTO;
 import com.example.proyectoIntegrador.models.RegisterDTO;
@@ -9,6 +10,7 @@ import com.example.proyectoIntegrador.services.ProyectoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -60,12 +62,20 @@ public class ProyectoServiceImpl implements ProyectoService {
 
     }
 
+    // Transaccional: si falla guardar la contraseña o la sesión, se revierte también el cliente
+    // (cualquier RuntimeException que salga del método hace rollback).
     @Override
+    @Transactional
     public ResponseRegister registerUser(RegisterDTO registerDTO) {
         Random random = new Random();
         ResponseRegister responseRegister = new ResponseRegister();
 
         log.debug("start registerUser");
+
+        if (proyectoRepository.existsUsernameOrEmail(registerDTO.getUsername(), registerDTO.getEmail())) {
+            log.debug("Error. Ya existe un usuario con ese username o email");
+            throw new UserAlreadyExistsException("Ya existe un usuario con ese username o email");
+        }
 
         try {
 

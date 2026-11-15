@@ -2,6 +2,7 @@ package com.example.proyectoIntegrador.controllers.Impl;
 
 import com.example.proyectoIntegrador.controllers.ProyectoController;
 import com.example.proyectoIntegrador.enums.CodesResponse;
+import com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException;
 import com.example.proyectoIntegrador.models.*;
 import com.example.proyectoIntegrador.services.ProyectoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,6 +54,14 @@ public class ProyectoControllerImpl implements ProyectoController {
             responseRegister.setResponseCode(CodesResponse.OK.getCode());
             responseRegister.setResponseDesc(CodesResponse.OK.getDescription());
             return ResponseEntity.ok().body(responseRegister);
+
+        } catch (UserAlreadyExistsException e) {
+            ResponseRegister responseError = new ResponseRegister();
+            responseError.setResponseCode(CodesResponse.USER_EXISTS.getCode());
+            responseError.setResponseDesc(CodesResponse.USER_EXISTS.getDescription());
+            responseError.setResponseObj(e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.OK).body(responseError);
 
         } catch (Exception e) {
             ResponseRegister responseError = new ResponseRegister();

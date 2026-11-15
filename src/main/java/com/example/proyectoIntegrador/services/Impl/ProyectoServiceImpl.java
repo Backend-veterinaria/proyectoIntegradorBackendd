@@ -21,8 +21,28 @@ public class ProyectoServiceImpl implements ProyectoService {
 
     private final ProyectoRepository proyectoRepository;
 
+    // TODO: ELIMINAR antes de cualquier despliegue. Usuario de demostración quemado para
+    //  ingresar a la app sin crear usuarios. Si existe un cliente con este username en la BD
+    //  se usan sus datos (para que tenga citas y mascotas); si no, se devuelve DEMO_USER_ID.
+    private static final String DEMO_USERNAME = "demo";
+    private static final String DEMO_PASSWORD = "demo123";
+    private static final String DEMO_USER_ID = "1";
+
     @Override
     public InfoUser loginService(LoginDTO loginDTO) {
+
+        // TODO: ELIMINAR antes de cualquier despliegue (acceso de demostración).
+        if (DEMO_USERNAME.equals(loginDTO.getUsername()) && DEMO_PASSWORD.equals(loginDTO.getPassword())) {
+            log.warn("Login con usuario de demostración quemado");
+            return proyectoRepository.validateUser(DEMO_USERNAME).orElseGet(() -> {
+                InfoUser demo = new InfoUser();
+                demo.setIdClient(DEMO_USER_ID);
+                demo.setName("Usuario");
+                demo.setLastName("Demo");
+                demo.setUsername(DEMO_USERNAME);
+                return demo;
+            });
+        }
 
         var infoUser = proyectoRepository.validateUser(loginDTO.getUsername())
                 .orElseThrow(() -> {

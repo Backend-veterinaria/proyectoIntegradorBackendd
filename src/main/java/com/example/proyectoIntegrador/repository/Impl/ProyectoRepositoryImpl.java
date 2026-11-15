@@ -132,8 +132,8 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
             // Ejecuta la consulta y devuelve el resultado
             Boolean exists = jdbcTemplate.queryForObject(sql, Boolean.class, id, password);
 
-            // Retorna el resultado envuelto en un Optional
-            return Optional.of(exists);
+            // Optional vacío si la contraseña no coincide, para que orElseThrow rechace el login
+            return Boolean.TRUE.equals(exists) ? Optional.of(true) : Optional.empty();
 
         } catch (Exception e) {
             log.error("Error validando la contraseña para el usuario {}: {}", idClient, e.getMessage());

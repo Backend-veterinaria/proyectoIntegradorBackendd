@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.repository.Impl;
 
+import com.example.proyectoIntegrador.enums.AppointmentStatus;
 import com.example.proyectoIntegrador.models.AgendaCita;
 import com.example.proyectoIntegrador.models.AgendaCitaDetail;
 import com.example.proyectoIntegrador.models.InfoMascota;
@@ -118,73 +119,6 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
     }
 
     @Override
-    public Optional<Boolean> actualizarFechaHoraCita(Integer citaId, String nuevaFecha, String nuevaHora, Integer medicoId) {
-        log.debug("Actualizando fecha/hora para cita {}", citaId);
-
-        // Verificar disponibilidad
-        String sqlVerificar = """
-                    SELECT COUNT(*)
-                    FROM agenda_cita ac
-                    JOIN cita c ON ac.cita_id = c.cita_id
-                    WHERE c.fecha = ? AND c.hora = ? AND ac.medico_id = ? AND c.cita_id != ?
-                """;
-
-        try {
-
-            Integer count = jdbcTemplate.queryForObject(sqlVerificar,
-                    Integer.class, nuevaFecha, nuevaHora, medicoId, citaId);
-
-            if (count > 0) {
-                log.warn("Ya existe una cita para el médico {} en {} {}", medicoId, nuevaFecha, nuevaHora);
-                return Optional.empty(); // Ya hay una cita en esa fecha/hora
-            }
-
-        } catch (Exception e) {
-            log.error("Error. No se pudo validar disponibilidad de la cita", e);
-            throw new RuntimeException("Error. No se pudo validar disponibilidad de la cita", e);
-        }
-
-
-        // Actualizar cita
-        String sqlActualizar = """
-                    UPDATE cita
-                    SET fecha = ?, hora = ?
-                    WHERE cita_id = ?
-                """;
-
-        try {
-            int rows = jdbcTemplate.update(sqlActualizar, nuevaFecha, nuevaHora, citaId);
-            return rows > 0 ? Optional.of(true) : Optional.empty();
-
-        } catch (Exception e) {
-            log.error("Error. No se pudo actualizar fecha y hora de la cita", e);
-            throw new RuntimeException("Error. No se pudo actualizar fecha y hora de la cita", e);
-        }
-
-    }
-
-
-    public Optional<Boolean> cancelarCita(Integer citaId, Integer clienteId) {
-        log.debug("Cancelando lógicamente la cita {}", citaId);
-
-        try {
-            String sqlCancelar = """
-                    UPDATE agenda_cita
-                    SET estado_id = 3
-                    WHERE agenda_id = ? and cliente_id = ? and estado_id in (1, 2, 4)
-                    """;
-
-            int rows = jdbcTemplate.update(sqlCancelar, citaId, clienteId);
-            return rows > 0 ? Optional.of(true) : Optional.empty();
-
-        } catch (Exception e) {
-            log.error("Error al cancelar la cita {}: {}", citaId, e.getMessage(), e);
-            return Optional.empty();
-        }
-    }
-
-
-    @Override
     public Optional<Boolean> validateClient(int idClient) {
 
         log.debug("validate client");
@@ -195,25 +129,6 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
 
         try {
             var resp = jdbcTemplate.queryForObject(sql, Integer.class, idClient);
-            return resp > 0 ? Optional.of(true) : Optional.empty();
-        } catch (Exception e) {
-            log.error("Error al validar cliente: " + e.getMessage());
-            return Optional.empty();
-        }
-
-    }
-
-    @Override
-    public Optional<Boolean> validateExistAppointment(int idAppointment, int idCliente) {
-
-        log.debug("validateExistAppointment");
-
-        String sql = """
-                SELECT COUNT(*) FROM agenda_cita WHERE agenda_id = ? and cliente_id = ?
-                """;
-
-        try {
-            var resp = jdbcTemplate.queryForObject(sql, Integer.class, idAppointment, idCliente);
             return resp > 0 ? Optional.of(true) : Optional.empty();
         } catch (Exception e) {
             log.error("Error al validar cliente: " + e.getMessage());
@@ -242,53 +157,6 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
         }
     }
 
-
-    @Override
-    public Optional<Boolean> validateMascota(int mascotaId) {
-        log.debug("validate mascota");
-
-        String sql = """
-                SELECT COUNT(*) FROM mascota WHERE mascota_id = ? 
-                """;
-
-        try {
-            var resp = jdbcTemplate.queryForObject(sql, Integer.class, mascotaId);
-            return resp > 0 ? Optional.of(true) : Optional.empty();
-        } catch (Exception e) {
-            log.error("Error al validar mascota: " + e.getMessage());
-            return Optional.empty();
-        }
-    }
-
-
-    public Optional<Boolean> hayDisponibilidadCita(LocalDate fechaDeseada, LocalTime horaDeseada) {
-
-        log.debug("start hayDisponibilidadCita");
-
-        LocalTime horaInicio = horaDeseada.minusMinutes(30);
-        LocalTime horaFin = horaDeseada.plusMinutes(30);
-
-        String sql = """
-                SELECT COUNT(*) FROM cita WHERE fecha = ? AND hora BETWEEN ? AND ?
-                """;
-
-        try {
-            Integer cantidad = jdbcTemplate.queryForObject(
-                    sql,
-                    Integer.class,
-                    Date.valueOf(fechaDeseada),
-                    Time.valueOf(horaInicio),
-                    Time.valueOf(horaFin)
-            );
-
-            return cantidad == 0 ? Optional.of(true) : Optional.empty(); // true = disponible
-
-        } catch (Exception e) {
-            log.error("Error al hayDisponibilidadCita: {}", e.getMessage());
-            return Optional.empty();
-        }
-
-    }
 
     @Override
     public List<VeterinarianAgendaItem> getAgendaByVeterinarian(int medicoId, LocalDate fecha, Integer estadoId) {
@@ -332,6 +200,80 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
                 """;
 
         return jdbcTemplate.update(sql, newEstadoId, agendaId, currentEstadoId);
+    }
+
+    @Override
+    public boolean isMascotaOfClient(int mascotaId, int clienteId) {
+        String sql = """
+                SELECT EXISTS (SELECT 1 FROM mascota WHERE mascota_id = ? AND cliente_id = ?)
+                """;
+
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, mascotaId, clienteId));
+    }
+
+    @Override
+    public boolean isSlotAvailable(int medicoId, LocalDate fecha, LocalTime hora, Integer excludeAgendaId) {
+        // Hay choque si otra cita del mismo veterinario empieza a menos de APPOINTMENT_MINUTES de esta.
+        // Las canceladas no ocupan horario. Los límites no se salen del día.
+        LocalTime desde = hora.isBefore(LocalTime.MIN.plusMinutes(APPOINTMENT_MINUTES))
+                ? LocalTime.MIN : hora.minusMinutes(APPOINTMENT_MINUTES);
+        LocalTime hasta = hora.isAfter(LocalTime.MAX.minusMinutes(APPOINTMENT_MINUTES))
+                ? LocalTime.MAX : hora.plusMinutes(APPOINTMENT_MINUTES);
+
+        String sql = """
+                SELECT NOT EXISTS (
+                    SELECT 1
+                    FROM agenda_cita ac
+                    JOIN cita c ON c.cita_id = ac.cita_id
+                    LEFT JOIN estado_cita ec ON ec.estado_id = ac.estado_id
+                    WHERE ac.medico_id = ?
+                      AND c.fecha = ?
+                      AND c.hora > ? AND c.hora < ?
+                      AND UPPER(COALESCE(ec.descripcion, '')) NOT LIKE '%CANCEL%'
+                      AND (CAST(? AS INTEGER) IS NULL OR ac.agenda_id <> ?)
+                )
+                """;
+
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class,
+                medicoId, Date.valueOf(fecha), Time.valueOf(desde), Time.valueOf(hasta),
+                excludeAgendaId, excludeAgendaId));
+    }
+
+    @Override
+    public Optional<Integer> findEstadoId(AppointmentStatus status) {
+        String sql = """
+                SELECT estado_id, descripcion FROM estado_cita ORDER BY estado_id
+                """;
+
+        // El reconocimiento por descripción se hace en Java con el mismo criterio de AppointmentStatus
+        return jdbcTemplate.query(sql, (rs, rowNum) ->
+                        AppointmentStatus.fromDescription(rs.getString("descripcion")) == status
+                                ? rs.getInt("estado_id") : null)
+                .stream()
+                .filter(java.util.Objects::nonNull)
+                .findFirst();
+    }
+
+    @Override
+    public int reschedule(int agendaId, int currentEstadoId, LocalDate fecha, LocalTime hora, int medicoId,
+                          int newEstadoId) {
+        log.debug("start reschedule agenda={} -> {} {} medico={}", agendaId, fecha, hora, medicoId);
+
+        String sqlAgenda = """
+                UPDATE agenda_cita SET medico_id = ?, estado_id = ? WHERE agenda_id = ? AND estado_id = ?
+                """;
+        int rows = jdbcTemplate.update(sqlAgenda, medicoId, newEstadoId, agendaId, currentEstadoId);
+        if (rows == 0) {
+            return 0;
+        }
+
+        String sqlCita = """
+                UPDATE cita SET fecha = ?, hora = ?
+                WHERE cita_id = (SELECT cita_id FROM agenda_cita WHERE agenda_id = ?)
+                """;
+        jdbcTemplate.update(sqlCita, Date.valueOf(fecha), Time.valueOf(hora), agendaId);
+
+        return rows;
     }
 
     private static final String SELECT_AGENDA_ITEM = """

@@ -31,4 +31,13 @@ public interface AgendaService {
      * @throws org.springframework.security.access.AccessDeniedException si la cita no es del veterinario
      */
     VeterinarianAgendaItem changeAppointmentStatus(AuthenticatedUser user, int agendaId, int estadoId);
+
+    /**
+     * Reprograma una cita pendiente a otra fecha y hora, y opcionalmente a otro veterinario (VET-04).
+     * La cita queda en estado reprogramada y el horario anterior queda libre.
+     *
+     * @return la cita reprogramada
+     * @throws org.springframework.security.access.AccessDeniedException si el usuario no puede gestionar la cita
+     */
+    VeterinarianAgendaItem rescheduleAppointment(AuthenticatedUser user, int agendaId, RescheduleAppointmentDTO dto);
 }

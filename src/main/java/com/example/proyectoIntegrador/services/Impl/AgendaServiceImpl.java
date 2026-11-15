@@ -14,8 +14,10 @@ import com.example.proyectoIntegrador.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -35,6 +37,8 @@ public class AgendaServiceImpl implements AgendaService {
     // STRICT con 'uuuu': rechaza fechas inexistentes como 20261332 o 20260230
     private static final DateTimeFormatter STRICT_DATE =
             DateTimeFormatter.ofPattern("uuuuMMdd").withResolverStyle(ResolverStyle.STRICT);
+    private static final DateTimeFormatter STRICT_TIME =
+            DateTimeFormatter.ofPattern("HHmmss").withResolverStyle(ResolverStyle.STRICT);
 
     @Override
     public List<AgendaCita> getListCitas(int idClient) {
@@ -51,11 +55,9 @@ public class AgendaServiceImpl implements AgendaService {
     public boolean scheduleAnAppointment(DataAppointmentDTO dataAppointmentDTO) {
         log.debug("start scheduleAnAppointment");
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");  // Cambiar a formato yyyyMMdd
-        DateTimeFormatter formatterTime = DateTimeFormatter.ofPattern("HHmmss");  // Cambiar a formato HHmmss
-
-        LocalDate date = LocalDate.parse(dataAppointmentDTO.getFecha(), formatter);
-        LocalTime time = LocalTime.parse(dataAppointmentDTO.getHora(), formatterTime);
+        LocalDate date = parseDate(dataAppointmentDTO.getFecha());
+        LocalTime time = parseTime(dataAppointmentDTO.getHora());
+        requireFuture(date, time);
 
         agendaCitaRepository.validateClient(dataAppointmentDTO.getClienteId())
                 .orElseThrow(() -> new BusinessException("cliente not found"));
@@ -63,14 +65,20 @@ public class AgendaServiceImpl implements AgendaService {
         agendaCitaRepository.validateVeterinarian(dataAppointmentDTO.getMedicoId())
                 .orElseThrow(() -> new BusinessException("El veterinario no existe o esta inactivo"));
 
-        agendaCitaRepository.validateMascota(dataAppointmentDTO.getMascotaId())
-                .orElseThrow(() -> new BusinessException("mascota not found"));
+        // La mascota debe ser del cliente de la cita
+        if (!agendaCitaRepository.isMascotaOfClient(dataAppointmentDTO.getMascotaId(), dataAppointmentDTO.getClienteId())) {
+            throw new BusinessException("La mascota no existe o no pertenece al cliente");
+        }
 
-        agendaCitaRepository.hayDisponibilidadCita(date, time)
-                .orElseThrow(() -> new BusinessException("No hay disponibilidad de citas"));
+        if (!agendaCitaRepository.isSlotAvailable(dataAppointmentDTO.getMedicoId(), date, time, null)) {
+            throw new BusinessException("El veterinario no tiene disponible ese horario");
+        }
+
+        // Toda cita nueva empieza como programada: el estado no lo decide quien agenda
+        int programada = estadoId(AppointmentStatus.PROGRAMADA);
 
         agendaCitaRepository.insertAgendaCita(dataAppointmentDTO.getDescription(), dataAppointmentDTO.getFecha(),
-                        time, dataAppointmentDTO.getEstadoId(), dataAppointmentDTO.getClienteId(), dataAppointmentDTO.getMedicoId(), dataAppointmentDTO.getMascotaId())
+                        time, programada, dataAppointmentDTO.getClienteId(), dataAppointmentDTO.getMedicoId(), dataAppointmentDTO.getMascotaId())
                 .orElseThrow(() -> new BusinessException("No se pudo agendar la cita"));
 
         notificationService.notifyAppointmentCreation(String.valueOf(dataAppointmentDTO.getClienteId()), new DetailAppointment(dataAppointmentDTO.getDescription(),
@@ -103,8 +111,8 @@ public class AgendaServiceImpl implements AgendaService {
     }
 
     /**
-     * @param dataCancelledAppointmentDTO
-     * @return
+     * Cancela una cita pendiente del cliente. Los estados se reconocen por su descripción
+     * (antes se usaban los ids 3 y 1, 2, 4 fijos en el SQL).
      */
     @Override
     public boolean cancelledAppointment(DataCancelledAppointmentDTO dataCancelledAppointmentDTO) {
@@ -112,13 +120,83 @@ public class AgendaServiceImpl implements AgendaService {
         agendaCitaRepository.validateClient(dataCancelledAppointmentDTO.getIdCliente())
                 .orElseThrow(() -> new BusinessException("cliente not found"));
 
-        agendaCitaRepository.validateExistAppointment(dataCancelledAppointmentDTO.getIdAppointment(), dataCancelledAppointmentDTO.getIdCliente())
-                .orElseThrow(() -> new BusinessException("Appointment no encontrada"));
+        VeterinarianAgendaItem cita = agendaCitaRepository.findAgendaItem(dataCancelledAppointmentDTO.getIdAppointment())
+                .filter(c -> dataCancelledAppointmentDTO.getIdCliente().equals(c.getClienteId()))
+                .orElseThrow(() -> new BusinessException("La cita no existe"));
 
-        agendaCitaRepository.cancelarCita(dataCancelledAppointmentDTO.getIdAppointment(), dataCancelledAppointmentDTO.getIdCliente())
-                .orElseThrow(() -> new BusinessException("No se pudo cancelar la cita programada"));
+        if (!AppointmentStatus.fromDescription(cita.getEstado()).isPending()) {
+            throw new BusinessException("No se puede cancelar una cita en estado '" + cita.getEstado() + "'");
+        }
+
+        int cancelada = estadoId(AppointmentStatus.CANCELADA);
+        if (agendaCitaRepository.updateEstado(cita.getAgendaId(), cita.getEstadoId(), cancelada) == 0) {
+            throw new BusinessException("La cita cambio de estado mientras se actualizaba. Consultela de nuevo");
+        }
 
         return true;
+    }
+
+    /**
+     * Reprograma una cita pendiente a otra fecha y hora (y opcionalmente otro veterinario) (VET-04).
+     * El cliente solo sus citas, el veterinario las asignadas a él y el administrador cualquiera.
+     */
+    @Override
+    @Transactional
+    public VeterinarianAgendaItem rescheduleAppointment(AuthenticatedUser user, int agendaId, RescheduleAppointmentDTO dto) {
+        log.debug("start rescheduleAppointment agenda={}", agendaId);
+
+        VeterinarianAgendaItem cita = agendaCitaRepository.findAgendaItem(agendaId)
+                .orElseThrow(() -> new BusinessException("La cita no existe"));
+
+        requireCanReschedule(user, cita);
+
+        if (!AppointmentStatus.fromDescription(cita.getEstado()).isPending()) {
+            throw new BusinessException("No se puede reprogramar una cita en estado '" + cita.getEstado() + "'");
+        }
+
+        LocalDate fecha = parseDate(dto.getFecha());
+        LocalTime hora = parseTime(dto.getHora());
+        requireFuture(fecha, hora);
+
+        int medicoId = dto.getMedicoId() != null ? dto.getMedicoId() : cita.getMedicoId();
+        agendaCitaRepository.validateVeterinarian(medicoId)
+                .orElseThrow(() -> new BusinessException("El veterinario no existe o esta inactivo"));
+
+        // La propia cita no cuenta: así se puede mover dentro de su mismo horario
+        if (!agendaCitaRepository.isSlotAvailable(medicoId, fecha, hora, agendaId)) {
+            throw new BusinessException("El veterinario no tiene disponible ese horario");
+        }
+
+        int reprogramada = estadoId(AppointmentStatus.REPROGRAMADA);
+        if (agendaCitaRepository.reschedule(agendaId, cita.getEstadoId(), fecha, hora, medicoId, reprogramada) == 0) {
+            throw new BusinessException("La cita cambio de estado mientras se actualizaba. Consultela de nuevo");
+        }
+
+        log.info("Cita {} reprogramada a {} {} con el medico {} por el usuario {}", agendaId, fecha, hora, medicoId, user.userId());
+        return agendaCitaRepository.findAgendaItem(agendaId)
+                .orElseThrow(() -> new RuntimeException("No se encontro la cita recien reprogramada"));
+    }
+
+    /**
+     * El administrador reprograma cualquier cita; el veterinario, las asignadas a él; el cliente, las suyas.
+     */
+    private void requireCanReschedule(AuthenticatedUser user, VeterinarianAgendaItem cita) {
+        if (user.role() == Role.CLIENTE) {
+            if (cita.getClienteId() != null && cita.getClienteId() == user.userId()) {
+                return;
+            }
+            throw new AccessDeniedException("Solo puede reprogramar sus propias citas");
+        }
+        requireCanManage(user, cita);
+    }
+
+    /**
+     * id del estado en estado_cita. Si no existe es un problema de configuración de la base de
+     * datos (ver sql/VET-04_reprogramacion_citas.sql), no un error del usuario.
+     */
+    private int estadoId(AppointmentStatus status) {
+        return agendaCitaRepository.findEstadoId(status)
+                .orElseThrow(() -> new RuntimeException("No existe el estado " + status + " en la tabla estado_cita"));
     }
 
     @Override
@@ -207,6 +285,20 @@ public class AgendaServiceImpl implements AgendaService {
             return LocalDate.parse(fecha, STRICT_DATE);
         } catch (DateTimeParseException e) {
             throw new BusinessException("La fecha no es valida");
+        }
+    }
+
+    private static LocalTime parseTime(String hora) {
+        try {
+            return LocalTime.parse(hora, STRICT_TIME);
+        } catch (DateTimeParseException e) {
+            throw new BusinessException("La hora no es valida");
+        }
+    }
+
+    private static void requireFuture(LocalDate fecha, LocalTime hora) {
+        if (!LocalDateTime.of(fecha, hora).isAfter(LocalDateTime.now())) {
+            throw new BusinessException("La fecha y hora de la cita ya pasaron");
         }
     }
 

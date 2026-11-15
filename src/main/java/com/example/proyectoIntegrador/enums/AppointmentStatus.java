@@ -57,6 +57,13 @@ public enum AppointmentStatus {
     }
 
     /**
+     * Cita que todavía no se ha atendido ni cancelado: se puede cancelar o reprogramar.
+     */
+    public boolean isPending() {
+        return PENDING.contains(this);
+    }
+
+    /**
      * Cambios de estado que puede hacer el personal (VET-03):
      * <ul>
      *   <li>Programada o reprogramada → confirmada.</li>

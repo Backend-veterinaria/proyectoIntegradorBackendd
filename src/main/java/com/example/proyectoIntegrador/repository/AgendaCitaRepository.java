@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.repository;
 
+import com.example.proyectoIntegrador.enums.AppointmentStatus;
 import com.example.proyectoIntegrador.models.AgendaCita;
 import com.example.proyectoIntegrador.models.AgendaCitaDetail;
 import com.example.proyectoIntegrador.models.InfoMascota;
@@ -16,17 +17,9 @@ public interface AgendaCitaRepository {
 
     Optional<Boolean> validateClient(int idClient);
 
-    Optional<Boolean> validateMascota(int mascotaId);
-
     Optional<Boolean> validateVeterinarian(int idVeterinarian);
 
     Optional<Integer> insertAgendaCita(String description, String fecha, LocalTime hora, Integer estadoId, Integer clienteId, Integer medicoId, Integer mascotaId);
-
-    Optional<Boolean> actualizarFechaHoraCita(Integer citaId, String nuevaFecha, String nuevaHora, Integer medicoId);
-
-    Optional<Boolean> cancelarCita(Integer citaId, Integer clienteId);
-
-    Optional<Boolean> hayDisponibilidadCita(LocalDate fechaDeseada, LocalTime horaDeseada);
 
     Optional<AgendaCitaDetail> getDetailAppointment(int idAgenda, int idClient);
 
@@ -60,5 +53,35 @@ public interface AgendaCitaRepository {
 
     Optional<InfoMascota> getInfoMascota(int idClient, int mascotaId);
 
-    Optional<Boolean> validateExistAppointment(int idAppointment, int idClient);
+    /**
+     * Indica si la mascota existe y pertenece al cliente. No captura excepciones.
+     */
+    boolean isMascotaOfClient(int mascotaId, int clienteId);
+
+    /**
+     * Indica si el veterinario tiene libre el horario: no tiene otra cita (que no esté cancelada)
+     * a menos de {@code APPOINTMENT_MINUTES} minutos de esa hora. No captura excepciones.
+     *
+     * @param excludeAgendaId cita que no se tiene en cuenta (la que se está reprogramando), o null
+     */
+    boolean isSlotAvailable(int medicoId, LocalDate fecha, LocalTime hora, Integer excludeAgendaId);
+
+    /**
+     * Busca en estado_cita el id del estado, reconociéndolo por su descripción.
+     *
+     * @return el estado_id (el menor, si hay varios), o vacío si no existe ese estado
+     */
+    Optional<Integer> findEstadoId(AppointmentStatus status);
+
+    /**
+     * Cambia fecha, hora, veterinario y estado de la cita, solo si sigue en el estado esperado.
+     * Debe llamarse dentro de una transacción. No captura excepciones.
+     *
+     * @return el número de citas actualizadas: 0 si la cita ya no estaba en currentEstadoId
+     */
+    int reschedule(int agendaId, int currentEstadoId, LocalDate fecha, LocalTime hora, int medicoId, int newEstadoId);
+
+    /** Duración de una cita: dos citas del mismo veterinario deben estar separadas al menos esto. */
+    int APPOINTMENT_MINUTES = 30;
+
 }

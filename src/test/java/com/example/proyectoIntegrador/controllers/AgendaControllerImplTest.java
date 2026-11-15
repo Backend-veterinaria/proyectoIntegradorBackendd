@@ -206,6 +206,60 @@ class AgendaControllerImplTest {
                 .andExpect(jsonPath("$.responseCode").value("6617"));
     }
 
+    // ---------- VET-04: reprogramación ----------
+
+    @Test
+    void clienteReprogramaCita() throws Exception {
+        VeterinarianAgendaItem cita = new VeterinarianAgendaItem();
+        cita.setAgendaId(100);
+        cita.setEstado("Reprogramada");
+        when(agendaService.rescheduleAppointment(any(), eq(100), any())).thenReturn(cita);
+
+        mockMvc.perform(patch("/integrador/agendaCita/100/reschedule")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fecha\":\"20991120\",\"hora\":\"103000\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"))
+                .andExpect(jsonPath("$.responseObj.estado").value("Reprogramada"));
+
+        verify(agendaService).rescheduleAppointment(eq(new AuthenticatedUser(3, "ana", Role.CLIENTE)), eq(100), any());
+    }
+
+    @Test
+    void reprogramarCitaAjenaDevuelve403() throws Exception {
+        when(agendaService.rescheduleAppointment(any(), anyInt(), any()))
+                .thenThrow(new AccessDeniedException("Solo puede reprogramar sus propias citas"));
+
+        mockMvc.perform(patch("/integrador/agendaCita/100/reschedule")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fecha\":\"20991120\",\"hora\":\"103000\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.responseCode").value("6619"));
+    }
+
+    @Test
+    void reprogramarSinTokenDevuelve401() throws Exception {
+        mockMvc.perform(patch("/integrador/agendaCita/100/reschedule")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fecha\":\"20991120\",\"hora\":\"103000\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void reprogramarConHoraMalFormadaDevuelveErrorDeValidacion() throws Exception {
+        mockMvc.perform(patch("/integrador/agendaCita/100/reschedule")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fecha\":\"20991120\",\"hora\":\"10:30\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6617"))
+                .andExpect(jsonPath("$.responseObj", hasItem("hora: hora must have format HHmmss")));
+
+        verify(agendaService, never()).rescheduleAppointment(any(), anyInt(), any());
+    }
+
     @Test
     void errorInternoNoSeEnviaAlCliente() throws Exception {
         when(agendaService.getListCitas(3))

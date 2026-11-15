@@ -8,9 +8,6 @@ import lombok.Data;
 
 @Data
 public class DataAppointmentDTO {
-    @NotNull(message = "required field estadoId")
-    @Positive(message = "estadoId must be positive")
-    private Integer estadoId;
     @NotNull(message = "required field clienteId")
     @Positive(message = "clienteId must be positive")
     private Integer clienteId;

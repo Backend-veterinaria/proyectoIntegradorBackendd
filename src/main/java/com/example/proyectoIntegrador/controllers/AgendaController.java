@@ -55,6 +55,16 @@ public interface AgendaController {
                                                             @Valid @RequestBody AppointmentStatusDTO dto);
 
 
+    /**
+     * Reprograma una cita a otra fecha y hora (VET-04). Cualquier usuario autenticado; el servicio
+     * valida que el cliente sea el dueño de la cita o que el veterinario sea el asignado.
+     */
+    @PatchMapping("/{agendaId}/reschedule")
+    @ResponseBody
+    ResponseEntity<ResponseGeneric> rescheduleAppointment(@PathVariable("agendaId") int agendaId,
+                                                          @Valid @RequestBody RescheduleAppointmentDTO dto);
+
+
     @GetMapping("/AnAppointment/details")
     @ResponseBody
     ResponseEntity<ResponseGeneric> getDetailAppointment(@ModelAttribute @Valid DataDetailAppointmentDTO detailAppointmentDTO, HttpServletRequest request);

@@ -7,6 +7,7 @@ import com.example.proyectoIntegrador.models.LoginDTO;
 import com.example.proyectoIntegrador.models.RegisterDTO;
 import com.example.proyectoIntegrador.models.ResponseRegister;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
+import com.example.proyectoIntegrador.repository.VeterinarianRepository;
 import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.services.ProyectoService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class ProyectoServiceImpl implements ProyectoService {
 
     private final ProyectoRepository proyectoRepository;
     private final PasswordEncoder passwordEncoder;
+    private final VeterinarianRepository veterinarianRepository;
 
     // Hash BCrypt: $2a$, $2b$ o $2y$, costo de 2 dígitos y 53 caracteres (sal + hash)
     // Mismo mensaje si el usuario no existe o la contraseña es incorrecta: no revela qué usuarios existen
@@ -86,6 +88,13 @@ public class ProyectoServiceImpl implements ProyectoService {
         if (!passwordMatches(userId, loginDTO.getPassword(), stored)) {
             log.debug("Login fallido: contraseña no valida");
             throw new BusinessException(INVALID_CREDENTIALS);
+        }
+
+        // El personal inactivo (VET-01) no puede iniciar sesión. Se valida después de la contraseña
+        // para no revelar el estado de una cuenta a quien no conoce sus credenciales.
+        if (Role.fromName(infoUser.getRole()).isStaff() && !veterinarianRepository.isStaffActive(userId)) {
+            log.debug("Login fallido: el usuario {} esta inactivo", userId);
+            throw new BusinessException("Usuario inactivo. Comuniquese con el administrador");
         }
 
         return infoUser;

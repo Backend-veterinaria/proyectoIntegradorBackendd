@@ -61,7 +61,9 @@ public class SelectorRepositoryImpl implements SelectorRepository {
                     SELECT m.medico_id, p.nombre, p.apellido, r.descripcion as rolDescription 
                     FROM medico m
                     left join personal p on p.personal_id = m.identificacion_medico 
-                    left join rol r on r.rol_id = p.rol_id 
+                    left join rol r on r.rol_id = p.rol_id
+                    where coalesce(p.activo, true) = true
+                    order by p.apellido, p.nombre
                     """;
 
             var empresas = jdbcTemplate.query(sql, (rs, rowNum) -> {

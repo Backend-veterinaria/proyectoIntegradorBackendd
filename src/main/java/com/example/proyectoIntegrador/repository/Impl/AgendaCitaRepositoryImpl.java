@@ -225,7 +225,10 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
         log.debug("validate client");
 
         String sql = """
-                SELECT COUNT(*) FROM medico WHERE medico_id = ? 
+                SELECT COUNT(*)
+                FROM medico m
+                LEFT JOIN personal p ON p.personal_id = m.identificacion_medico
+                WHERE m.medico_id = ? AND COALESCE(p.activo, TRUE) = TRUE
                 """;
 
         try {

@@ -6,6 +6,7 @@ import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.LoginDTO;
 import com.example.proyectoIntegrador.models.RegisterDTO;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
+import com.example.proyectoIntegrador.repository.VeterinarianRepository;
 import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.services.Impl.ProyectoServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,11 +42,61 @@ class ProyectoServiceImplTest {
     @Mock
     private ProyectoRepository proyectoRepository;
 
+    @Mock
+    private VeterinarianRepository veterinarianRepository;
+
     private ProyectoServiceImpl proyectoService;
 
     @BeforeEach
     void setUp() {
-        proyectoService = new ProyectoServiceImpl(proyectoRepository, passwordEncoder);
+        proyectoService = new ProyectoServiceImpl(proyectoRepository, passwordEncoder, veterinarianRepository);
+    }
+
+    private void givenVeterinarian(boolean active) {
+        InfoUser user = new InfoUser();
+        user.setIdClient("9");
+        user.setRole("VETERINARIO");
+        when(proyectoRepository.validateUser("dr.perez")).thenReturn(Optional.of(user));
+        when(proyectoRepository.getPasswordHash(9)).thenReturn(Optional.of(passwordEncoder.encode("secreta123")));
+        when(veterinarianRepository.isStaffActive(9)).thenReturn(active);
+    }
+
+    @Test
+    void veterinarioInactivoNoPuedeIniciarSesion() {
+        givenVeterinarian(false);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> proyectoService.loginService(login("dr.perez", "secreta123")));
+        assertEquals("Usuario inactivo. Comuniquese con el administrador", e.getMessage());
+    }
+
+    @Test
+    void veterinarioActivoPuedeIniciarSesion() {
+        givenVeterinarian(true);
+
+        assertDoesNotThrow(() -> proyectoService.loginService(login("dr.perez", "secreta123")));
+    }
+
+    @Test
+    void veterinarioInactivoConPasswordIncorrectaNoRevelaQueEstaInactivo() {
+        InfoUser user = new InfoUser();
+        user.setIdClient("9");
+        user.setRole("VETERINARIO");
+        when(proyectoRepository.validateUser("dr.perez")).thenReturn(Optional.of(user));
+        when(proyectoRepository.getPasswordHash(9)).thenReturn(Optional.of(passwordEncoder.encode("secreta123")));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> proyectoService.loginService(login("dr.perez", "mala")));
+        assertEquals("Usuario o contraseña incorrectos", e.getMessage());
+        verify(veterinarianRepository, never()).isStaffActive(anyInt());
+    }
+
+    @Test
+    void clienteNoConsultaElEstadoDePersonal() {
+        givenUserWithStoredPassword(passwordEncoder.encode("secreta123"));
+
+        assertDoesNotThrow(() -> proyectoService.loginService(login("ana", "secreta123")));
+        verify(veterinarianRepository, never()).isStaffActive(anyInt());
     }
 
     private void givenUserWithStoredPassword(String stored) {

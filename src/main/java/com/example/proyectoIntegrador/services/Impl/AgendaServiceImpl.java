@@ -49,7 +49,7 @@ public class AgendaServiceImpl implements AgendaService {
                 .orElseThrow(() -> new BusinessException("cliente not found"));
 
         agendaCitaRepository.validateVeterinarian(dataAppointmentDTO.getMedicoId())
-                .orElseThrow(() -> new BusinessException("veterinario not found"));
+                .orElseThrow(() -> new BusinessException("El veterinario no existe o esta inactivo"));
 
         agendaCitaRepository.validateMascota(dataAppointmentDTO.getMascotaId())
                 .orElseThrow(() -> new BusinessException("mascota not found"));

@@ -16,6 +16,7 @@ public enum CodesResponse {
     ERROR_UNAUTHORIZED("6618", "Error. Debe iniciar sesion o el token no es valido"),
     ERROR_FORBIDDEN("6619", "Error. No tiene permiso para acceder a este recurso"),
     ERROR_UNEXPECTED("6620", "Error. Ocurrio un error inesperado"),
+    ERROR_SAVE_DATA("6621", "Error. No se pudo guardar el registro"),
     ;
 
 

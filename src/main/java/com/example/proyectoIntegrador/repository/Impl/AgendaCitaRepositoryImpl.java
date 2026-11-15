@@ -205,7 +205,10 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
     @Override
     public boolean isMascotaOfClient(int mascotaId, int clienteId) {
         String sql = """
-                SELECT EXISTS (SELECT 1 FROM mascota WHERE mascota_id = ? AND cliente_id = ?)
+                SELECT EXISTS (
+                    SELECT 1 FROM mascota
+                    WHERE mascota_id = ? AND cliente_id = ? AND COALESCE(activo, TRUE) = TRUE
+                )
                 """;
 
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, mascotaId, clienteId));

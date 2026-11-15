@@ -24,6 +24,14 @@ public final class SecurityUtils {
     }
 
     /**
+     * Misma regla que {@link #requireSameClient(Integer)} pero para un usuario dado: el personal
+     * accede a cualquier cliente y el cliente solo a sí mismo. Útil en los servicios.
+     */
+    public static boolean canAccessClient(AuthenticatedUser user, Integer clientId) {
+        return user.role().isStaff() || (clientId != null && clientId == user.userId());
+    }
+
+    /**
      * Permite el acceso si el usuario es personal (ADMIN o VETERINARIO) o si el id es el suyo.
      */
     public static void requireSameClient(Integer clientId) {

@@ -54,7 +54,7 @@ public interface AgendaCitaRepository {
     Optional<InfoMascota> getInfoMascota(int idClient, int mascotaId);
 
     /**
-     * Indica si la mascota existe y pertenece al cliente. No captura excepciones.
+     * Indica si la mascota existe, pertenece al cliente y está activa. No captura excepciones.
      */
     boolean isMascotaOfClient(int mascotaId, int clienteId);
 

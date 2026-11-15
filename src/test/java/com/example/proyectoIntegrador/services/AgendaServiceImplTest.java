@@ -283,7 +283,7 @@ class AgendaServiceImplTest {
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(false);
 
         BusinessException e = assertThrows(BusinessException.class, () -> service.scheduleAnAppointment(nuevaCita()));
-        assertEquals("La mascota no existe o no pertenece al cliente", e.getMessage());
+        assertEquals("La mascota no existe, no pertenece al cliente o esta inactiva", e.getMessage());
         verify(agendaCitaRepository, never()).insertAgendaCita(any(), any(), any(), any(), any(), any(), any());
     }
 

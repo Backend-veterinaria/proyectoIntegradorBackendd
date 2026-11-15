@@ -67,7 +67,7 @@ public class AgendaServiceImpl implements AgendaService {
 
         // La mascota debe ser del cliente de la cita
         if (!agendaCitaRepository.isMascotaOfClient(dataAppointmentDTO.getMascotaId(), dataAppointmentDTO.getClienteId())) {
-            throw new BusinessException("La mascota no existe o no pertenece al cliente");
+            throw new BusinessException("La mascota no existe, no pertenece al cliente o esta inactiva");
         }
 
         if (!agendaCitaRepository.isSlotAvailable(dataAppointmentDTO.getMedicoId(), date, time, null)) {

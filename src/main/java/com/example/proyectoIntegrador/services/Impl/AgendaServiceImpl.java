@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.services.Impl;
 
+import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.models.*;
 import com.example.proyectoIntegrador.repository.AgendaCitaRepository;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
@@ -28,10 +29,10 @@ public class AgendaServiceImpl implements AgendaService {
         log.debug("start getListCitas");
 
         agendaCitaRepository.validateClient(idClient)
-                .orElseThrow(() -> new RuntimeException("cliente not found"));
+                .orElseThrow(() -> new BusinessException("cliente not found"));
 
         return agendaCitaRepository.getListAgenda(idClient)
-                .orElseThrow(() -> new RuntimeException("El usuario no tiene citas agendadas"));
+                .orElseThrow(() -> new BusinessException("El usuario no tiene citas agendadas"));
     }
 
     @Override
@@ -45,20 +46,20 @@ public class AgendaServiceImpl implements AgendaService {
         LocalTime time = LocalTime.parse(dataAppointmentDTO.getHora(), formatterTime);
 
         agendaCitaRepository.validateClient(dataAppointmentDTO.getClienteId())
-                .orElseThrow(() -> new RuntimeException("cliente not found"));
+                .orElseThrow(() -> new BusinessException("cliente not found"));
 
         agendaCitaRepository.validateVeterinarian(dataAppointmentDTO.getMedicoId())
-                .orElseThrow(() -> new RuntimeException("veterinario not found"));
+                .orElseThrow(() -> new BusinessException("veterinario not found"));
 
         agendaCitaRepository.validateMascota(dataAppointmentDTO.getMascotaId())
-                .orElseThrow(() -> new RuntimeException("mascota not found"));
+                .orElseThrow(() -> new BusinessException("mascota not found"));
 
         agendaCitaRepository.hayDisponibilidadCita(date, time)
-                .orElseThrow(() -> new RuntimeException("No hay disponibilidad de citas"));
+                .orElseThrow(() -> new BusinessException("No hay disponibilidad de citas"));
 
         agendaCitaRepository.insertAgendaCita(dataAppointmentDTO.getDescription(), dataAppointmentDTO.getFecha(),
                         time, dataAppointmentDTO.getEstadoId(), dataAppointmentDTO.getClienteId(), dataAppointmentDTO.getMedicoId(), dataAppointmentDTO.getMascotaId())
-                .orElseThrow(() -> new RuntimeException("No se pudo agendar la cita"));
+                .orElseThrow(() -> new BusinessException("No se pudo agendar la cita"));
 
         notificationService.notifyAppointmentCreation(String.valueOf(dataAppointmentDTO.getClienteId()), new DetailAppointment(dataAppointmentDTO.getDescription(),
                 dataAppointmentDTO.getFecha(),
@@ -72,16 +73,16 @@ public class AgendaServiceImpl implements AgendaService {
     public AgendaCitaDetail getDetailAppointment(DataDetailAppointmentDTO detailAppointmentDTO) {
 
         var agendaCitaDetail = agendaCitaRepository.getDetailAppointment(detailAppointmentDTO.getIdAppointment(), detailAppointmentDTO.getIdClient())
-                .orElseThrow(() -> new RuntimeException("No se encontro la cita programada"));
+                .orElseThrow(() -> new BusinessException("No se encontro la cita programada"));
 
         var infoUser = proyectoRepository.validateUser(detailAppointmentDTO.getUsername())
                 .orElseThrow(() -> {
                     log.debug("Error. El usuario no esta registrado");
-                    return new RuntimeException("Error. El usuario no esta registrado");
+                    return new BusinessException("Error. El usuario no esta registrado");
                 });
 
         var infoMascota = agendaCitaRepository.getInfoMascota(detailAppointmentDTO.getIdClient(), agendaCitaDetail.getMascotaId())
-                .orElseThrow(() -> new RuntimeException("El usuario no tiene una mascota registrada"));
+                .orElseThrow(() -> new BusinessException("El usuario no tiene una mascota registrada"));
 
         agendaCitaDetail.setInfoUser(infoUser);
         agendaCitaDetail.setInfoMascota(infoMascota);
@@ -97,13 +98,13 @@ public class AgendaServiceImpl implements AgendaService {
     public boolean cancelledAppointment(DataCancelledAppointmentDTO dataCancelledAppointmentDTO) {
 
         agendaCitaRepository.validateClient(dataCancelledAppointmentDTO.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("cliente not found"));
+                .orElseThrow(() -> new BusinessException("cliente not found"));
 
         agendaCitaRepository.validateExistAppointment(dataCancelledAppointmentDTO.getIdAppointment(), dataCancelledAppointmentDTO.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("Appointment no encontrada"));
+                .orElseThrow(() -> new BusinessException("Appointment no encontrada"));
 
         agendaCitaRepository.cancelarCita(dataCancelledAppointmentDTO.getIdAppointment(), dataCancelledAppointmentDTO.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("No se pudo cancelar la cita programada"));
+                .orElseThrow(() -> new BusinessException("No se pudo cancelar la cita programada"));
 
         return true;
     }

@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.services;
 
+import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException;
 import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.LoginDTO;
@@ -110,6 +111,20 @@ class ProyectoServiceImplTest {
         givenUserWithStoredPassword(null);
 
         assertThrows(RuntimeException.class, () -> proyectoService.loginService(login("ana", "lo-que-sea")));
+    }
+
+    @Test
+    void usuarioInexistenteYPasswordIncorrectaDanElMismoMensaje() {
+        when(proyectoRepository.validateUser("nadie")).thenReturn(Optional.empty());
+        givenUserWithStoredPassword(passwordEncoder.encode("secreta123"));
+
+        BusinessException noExiste = assertThrows(BusinessException.class,
+                () -> proyectoService.loginService(login("nadie", "x")));
+        BusinessException malPassword = assertThrows(BusinessException.class,
+                () -> proyectoService.loginService(login("ana", "mala")));
+
+        assertEquals("Usuario o contraseña incorrectos", noExiste.getMessage());
+        assertEquals(noExiste.getMessage(), malPassword.getMessage());
     }
 
     @Test

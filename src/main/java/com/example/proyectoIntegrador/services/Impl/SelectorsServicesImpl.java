@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.services.Impl;
 
+import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.models.DataSelector;
 import com.example.proyectoIntegrador.models.DataUserDTO;
 import com.example.proyectoIntegrador.repository.SelectorRepository;
@@ -24,25 +25,25 @@ public class SelectorsServicesImpl implements SelectorsServices {
         var estados = selectorRepository.getSelectorEstado()
                 .orElseThrow(() -> {
                     log.error("Error. No hay datos configurados para el estado");
-                    return new RuntimeException("Error. No hay datos configurados para el estado");
+                    return new BusinessException("Error. No hay datos configurados para el estado");
                 });
 
         var veterinarian = selectorRepository.getSelectorVeterinarian()
                 .orElseThrow(() -> {
                     log.error("Error. No hay datos configurados de veteinarios");
-                    return new RuntimeException("Error. No hay datos configurados de veteinarios");
+                    return new BusinessException("Error. No hay datos configurados de veteinarios");
                 });
 
         var typeRazas = selectorRepository.getSelectorRaza()
                 .orElseThrow(() -> {
                     log.error("Error. No hay tipos de raza configurados");
-                    return new RuntimeException("Error. No hay tipos de raza configurados");
+                    return new BusinessException("Error. No hay tipos de raza configurados");
                 });
 
         var roles = selectorRepository.getSelectorRols()
                 .orElseThrow(() -> {
                     log.error("Error. No hay datos configurados de roles");
-                    return new RuntimeException("Error. No hay datos configurados de roles");
+                    return new BusinessException("Error. No hay datos configurados de roles");
                 });
 
         dataSelectors.setSelectorEstadoList(estados);

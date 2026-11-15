@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.services.Impl;
 
+import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.models.DataMascotaDTO;
 import com.example.proyectoIntegrador.models.DataUserDTO;
 import com.example.proyectoIntegrador.models.InfoMascota;
@@ -38,14 +39,14 @@ public class PetsServicesImpl implements PetsServices {
     public boolean addPet(DataMascotaDTO dataMascotaDTO) {
 
         agendaCitaRepository.validateClient(dataMascotaDTO.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("cliente not found"));
+                .orElseThrow(() -> new BusinessException("cliente not found"));
 
         var existPet = petsRepository.validateExistPet(dataMascotaDTO.getNombre(), dataMascotaDTO.getEdad(), dataMascotaDTO.getGenero(), dataMascotaDTO.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("Error. No se pudo validar la existencia de la mascota con los datos ingresados"));
+                .orElseThrow(() -> new BusinessException("Error. No se pudo validar la existencia de la mascota con los datos ingresados"));
 
         if (existPet) {
             log.debug("Existe la mascota con los datos ingresados");
-            throw new RuntimeException("La mascota ya existe");
+            throw new BusinessException("La mascota ya existe");
         } else {
             log.debug("No existe la mascota con los datos ingresados");
         }
@@ -54,7 +55,7 @@ public class PetsServicesImpl implements PetsServices {
 
         petsRepository.addPet(dataMascotaDTO.getIdCliente(), codigo, dataMascotaDTO.getNombre(),
                         dataMascotaDTO.getEdad(), dataMascotaDTO.getGenero(), dataMascotaDTO.getRazaId())
-                .orElseThrow(() -> new RuntimeException("No se pudo agregar la mascota"));
+                .orElseThrow(() -> new BusinessException("No se pudo agregar la mascota"));
 
         return true;
     }
@@ -66,9 +67,9 @@ public class PetsServicesImpl implements PetsServices {
     @Override
     public List<InfoMascota> getListPets(DataUserDTO dataUserDTO) {
         agendaCitaRepository.validateClient(dataUserDTO.getIdClient())
-                .orElseThrow(() -> new RuntimeException("cliente not found"));
+                .orElseThrow(() -> new BusinessException("cliente not found"));
 
         return petsRepository.getListPetsByUser(dataUserDTO.getIdClient())
-                .orElseThrow(() -> new RuntimeException("El usuario no tiene mascotas registradas"));
+                .orElseThrow(() -> new BusinessException("El usuario no tiene mascotas registradas"));
     }
 }

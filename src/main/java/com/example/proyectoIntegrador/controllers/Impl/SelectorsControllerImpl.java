@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.controllers.Impl;
 
+import com.example.proyectoIntegrador.exceptions.ErrorMessages;
 import com.example.proyectoIntegrador.controllers.SelectorsController;
 import com.example.proyectoIntegrador.enums.CodesResponse;
 import com.example.proyectoIntegrador.models.DataSelector;
@@ -42,7 +43,7 @@ public class SelectorsControllerImpl implements SelectorsController {
             ResponseLogin responseError = new ResponseLogin();
             responseError.setResponseCode(CodesResponse.ERROR_GET_DATA.getCode());
             responseError.setResponseDesc(CodesResponse.ERROR_GET_DATA.getDescription());
-            responseError.setResponseObj(e.getMessage());
+            responseError.setResponseObj(ErrorMessages.clientMessage(e));
 
             return ResponseEntity.status(HttpStatus.OK).body(responseError);
         }

@@ -1,6 +1,8 @@
 package com.example.proyectoIntegrador.controllers;
 
 import com.example.proyectoIntegrador.controllers.Impl.AgendaControllerImpl;
+import com.example.proyectoIntegrador.exceptions.BusinessException;
+import com.example.proyectoIntegrador.exceptions.ErrorMessages;
 import com.example.proyectoIntegrador.security.JwtService;
 import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.security.SecurityConfig;
@@ -69,6 +71,38 @@ class AgendaControllerImplTest {
                         .content("{\"idCliente\":4,\"idAppointment\":10}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.responseCode").value("0000"));
+    }
+
+    @Test
+    void errorInternoNoSeEnviaAlCliente() throws Exception {
+        when(agendaService.getListCitas(3))
+                .thenThrow(new RuntimeException("ERROR: relation \"agenda_cita\" does not exist"));
+
+        mockMvc.perform(get("/integrador/agendaCita/list").param("idClient", "3")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6615"))
+                .andExpect(jsonPath("$.responseObj").value(ErrorMessages.GENERIC_MESSAGE));
+    }
+
+    @Test
+    void errorDeNegocioSiSeEnviaAlCliente() throws Exception {
+        when(agendaService.getListCitas(3)).thenThrow(new BusinessException("El usuario no tiene citas agendadas"));
+
+        mockMvc.perform(get("/integrador/agendaCita/list").param("idClient", "3")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6615"))
+                .andExpect(jsonPath("$.responseObj").value("El usuario no tiene citas agendadas"));
+    }
+
+    @Test
+    void rutaInexistenteDevuelve404ConElFormatoComun() throws Exception {
+        mockMvc.perform(get("/integrador/agendaCita/no-existe")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(3, "ana")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.responseCode").value("6620"))
+                .andExpect(jsonPath("$.responseObj").value(ErrorMessages.GENERIC_MESSAGE));
     }
 
     @Test

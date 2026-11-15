@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.controllers.Impl;
 
+import com.example.proyectoIntegrador.exceptions.ErrorMessages;
 import com.example.proyectoIntegrador.controllers.ProyectoController;
 import com.example.proyectoIntegrador.enums.CodesResponse;
 import com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException;
@@ -45,7 +46,7 @@ public class ProyectoControllerImpl implements ProyectoController {
             ResponseLogin responseError = new ResponseLogin();
             responseError.setResponseCode(CodesResponse.ERROR_NOT_LOGIN.getCode());
             responseError.setResponseDesc(CodesResponse.ERROR_NOT_LOGIN.getDescription());
-            responseError.setResponseObj(e.getMessage());
+            responseError.setResponseObj(ErrorMessages.clientMessage(e));
 
             return ResponseEntity.status(HttpStatus.OK).body(responseError);
         }
@@ -66,7 +67,7 @@ public class ProyectoControllerImpl implements ProyectoController {
             ResponseRegister responseError = new ResponseRegister();
             responseError.setResponseCode(CodesResponse.USER_EXISTS.getCode());
             responseError.setResponseDesc(CodesResponse.USER_EXISTS.getDescription());
-            responseError.setResponseObj(e.getMessage());
+            responseError.setResponseObj(ErrorMessages.clientMessage(e));
 
             return ResponseEntity.status(HttpStatus.OK).body(responseError);
 
@@ -74,7 +75,7 @@ public class ProyectoControllerImpl implements ProyectoController {
             ResponseRegister responseError = new ResponseRegister();
             responseError.setResponseCode(CodesResponse.ERROR_REGISTER_USER.getCode());
             responseError.setResponseDesc(CodesResponse.ERROR_REGISTER_USER.getDescription());
-            responseError.setResponseObj(e.getMessage());
+            responseError.setResponseObj(ErrorMessages.clientMessage(e));
 
             return ResponseEntity.status(HttpStatus.OK).body(responseError);
         }

@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.services.Impl;
 
+import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException;
 import com.example.proyectoIntegrador.models.InfoUser;
 import com.example.proyectoIntegrador.models.LoginDTO;
@@ -30,6 +31,18 @@ public class ProyectoServiceImpl implements ProyectoService {
     private final PasswordEncoder passwordEncoder;
 
     // Hash BCrypt: $2a$, $2b$ o $2y$, costo de 2 dígitos y 53 caracteres (sal + hash)
+    // Mismo mensaje si el usuario no existe o la contraseña es incorrecta: no revela qué usuarios existen
+    private static final String INVALID_CREDENTIALS = "Usuario o contraseña incorrectos";
+
+    private volatile String dummyHash;
+
+    private String dummyHash() {
+        if (dummyHash == null) {
+            dummyHash = passwordEncoder.encode("usuario-inexistente");
+        }
+        return dummyHash;
+    }
+
     private static final Pattern BCRYPT_PATTERN = Pattern.compile("^\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}$");
 
     // TODO: ELIMINAR antes de cualquier despliegue. Usuario de demostración quemado para
@@ -57,18 +70,22 @@ public class ProyectoServiceImpl implements ProyectoService {
             });
         }
 
-        var infoUser = proyectoRepository.validateUser(loginDTO.getUsername())
-                .orElseThrow(() -> {
-                    log.debug("Error. El usuario no esta registrado");
-                    return new RuntimeException("Error. El usuario no esta registrado");
-                });
+        var infoUser = proyectoRepository.validateUser(loginDTO.getUsername()).orElse(null);
+
+        if (infoUser == null) {
+            log.debug("Login fallido: el usuario no esta registrado");
+            // Se verifica contra un hash cualquiera para que la respuesta tarde lo mismo que con un
+            // usuario existente: así no se puede deducir por el tiempo qué usuarios existen.
+            passwordEncoder.matches(loginDTO.getPassword() == null ? "" : loginDTO.getPassword(), dummyHash());
+            throw new BusinessException(INVALID_CREDENTIALS);
+        }
 
         int userId = Integer.parseInt(infoUser.getIdClient());
         String stored = proyectoRepository.getPasswordHash(userId).orElse(null);
 
         if (!passwordMatches(userId, loginDTO.getPassword(), stored)) {
-            log.debug("Error. Contraseña no valida");
-            throw new RuntimeException("Error. Contraseña no valida");
+            log.debug("Login fallido: contraseña no valida");
+            throw new BusinessException(INVALID_CREDENTIALS);
         }
 
         return infoUser;

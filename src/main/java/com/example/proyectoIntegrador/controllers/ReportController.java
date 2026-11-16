@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.controllers;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.example.proyectoIntegrador.models.ReportFilterDTO;
 import com.example.proyectoIntegrador.models.ResponseGeneric;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/integrador/reports")
 @PreAuthorize("hasAnyRole('VETERINARIO', 'ADMIN')")
+@Tag(name = "Reportes", description = "Reportes de citas, atenciones y mascotas atendidas (personal)")
 public interface ReportController {
 
     /** REP-01: citas por estado y período. */

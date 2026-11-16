@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.controllers;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.example.proyectoIntegrador.models.DataMascotaDTO;
 import com.example.proyectoIntegrador.models.DataUserDTO;
 import com.example.proyectoIntegrador.models.PetUpdateDTO;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/integrador/pets")
+@Tag(name = "Mascotas", description = "Registro, consulta, edición e inactivación de mascotas")
 public interface PetsController {
 
     @PostMapping("/Addpets")

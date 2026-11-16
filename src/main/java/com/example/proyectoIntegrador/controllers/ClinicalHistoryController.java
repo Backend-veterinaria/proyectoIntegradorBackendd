@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.controllers;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.example.proyectoIntegrador.models.ClinicalAttentionCreateDTO;
 import com.example.proyectoIntegrador.models.ResponseGeneric;
 import com.example.proyectoIntegrador.models.TreatmentCreateDTO;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/integrador/clinicalHistory")
+@Tag(name = "Historia clínica", description = "Atención clínica, historial, tratamientos y vacunas")
 public interface ClinicalHistoryController {
 
     /**

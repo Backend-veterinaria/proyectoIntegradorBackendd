@@ -31,6 +31,8 @@
 		<maven.compiler.proc>full</maven.compiler.proc>
 		<spring-cloud.version>2023.0.2</spring-cloud.version>
 		<jjwt.version>0.12.6</jjwt.version>
+		<!-- springdoc 2.6.x es la línea compatible con Spring Boot 3.3 -->
+		<springdoc.version>2.6.0</springdoc.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -56,6 +58,12 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<!-- Documentación de la API (QA-05): Swagger UI en /swagger-ui.html y OpenAPI en /v3/api-docs -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
 		</dependency>
 		<!-- Hibernate Validator: hace que @Valid y las anotaciones de los DTO se ejecuten -->
 		<dependency>

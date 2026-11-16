@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.controllers;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.example.proyectoIntegrador.models.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/integrador/agendaCita")
+@Tag(name = "Citas", description = "Agendar, consultar, cancelar, reprogramar y cambiar el estado de citas; agenda del veterinario")
 public interface AgendaController {
 
     /**

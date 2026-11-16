@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.controllers;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.example.proyectoIntegrador.models.ClientUpdateDTO;
 import com.example.proyectoIntegrador.models.ResponseGeneric;
 import com.example.proyectoIntegrador.models.StatusDTO;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/integrador/clients")
+@Tag(name = "Propietarios", description = "Perfil, búsqueda y activación de propietarios")
 public interface ClientController {
 
     /**

@@ -1,5 +1,6 @@
 package com.example.proyectoIntegrador.controllers;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.example.proyectoIntegrador.models.ResponseGeneric;
 import com.example.proyectoIntegrador.models.VeterinarianCreateDTO;
 import com.example.proyectoIntegrador.models.VeterinarianStatusDTO;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/integrador/veterinarians")
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Veterinarios", description = "Administración de veterinarios (solo ADMIN)")
 public interface VeterinarianController {
 
     /**

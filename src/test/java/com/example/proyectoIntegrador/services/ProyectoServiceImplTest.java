@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,6 +59,7 @@ class ProyectoServiceImplTest {
         user.setRole("VETERINARIO");
         when(proyectoRepository.validateUser("dr.perez")).thenReturn(Optional.of(user));
         when(proyectoRepository.getPasswordHash(9)).thenReturn(Optional.of(passwordEncoder.encode("secreta123")));
+        when(proyectoRepository.isUserActive(9)).thenReturn(true);
         when(veterinarianRepository.isStaffActive(9)).thenReturn(active);
     }
 
@@ -104,6 +106,7 @@ class ProyectoServiceImplTest {
         user.setIdClient("5");
         when(proyectoRepository.validateUser("ana")).thenReturn(Optional.of(user));
         when(proyectoRepository.getPasswordHash(5)).thenReturn(Optional.ofNullable(stored));
+        lenient().when(proyectoRepository.isUserActive(5)).thenReturn(true);
     }
 
     private static LoginDTO login(String username, String password) {
@@ -176,6 +179,32 @@ class ProyectoServiceImplTest {
 
         assertEquals("Usuario o contraseña incorrectos", noExiste.getMessage());
         assertEquals(noExiste.getMessage(), malPassword.getMessage());
+    }
+
+    @Test
+    void clienteInactivoNoPuedeIniciarSesion() {
+        InfoUser user = new InfoUser();
+        user.setIdClient("5");
+        when(proyectoRepository.validateUser("ana")).thenReturn(Optional.of(user));
+        when(proyectoRepository.getPasswordHash(5)).thenReturn(Optional.of(passwordEncoder.encode("secreta123")));
+        when(proyectoRepository.isUserActive(5)).thenReturn(false);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> proyectoService.loginService(login("ana", "secreta123")));
+        assertEquals("Usuario inactivo. Comuniquese con el administrador", e.getMessage());
+    }
+
+    @Test
+    void clienteInactivoConPasswordIncorrectaNoRevelaQueEstaInactivo() {
+        InfoUser user = new InfoUser();
+        user.setIdClient("5");
+        when(proyectoRepository.validateUser("ana")).thenReturn(Optional.of(user));
+        when(proyectoRepository.getPasswordHash(5)).thenReturn(Optional.of(passwordEncoder.encode("secreta123")));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> proyectoService.loginService(login("ana", "mala")));
+        assertEquals("Usuario o contraseña incorrectos", e.getMessage());
+        verify(proyectoRepository, never()).isUserActive(anyInt());
     }
 
     @Test

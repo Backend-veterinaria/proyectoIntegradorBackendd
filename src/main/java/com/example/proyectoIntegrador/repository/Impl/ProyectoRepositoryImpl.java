@@ -109,6 +109,18 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
 
 
     @Override
+    public boolean isUserActive(int clienteId) {
+        String sql = """
+                SELECT COALESCE(estado_cliente, TRUE) FROM cliente WHERE cliente_id = ?
+                """;
+
+        return jdbcTemplate.queryForList(sql, Boolean.class, clienteId).stream()
+                .findFirst()
+                .orElse(false);
+    }
+
+
+    @Override
     public Optional<Integer> getIdUser(String userName) {
         log.debug("Obtener informacion del cliente");
 

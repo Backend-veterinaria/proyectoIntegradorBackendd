@@ -62,6 +62,10 @@ public class AgendaServiceImpl implements AgendaService {
         agendaCitaRepository.validateClient(dataAppointmentDTO.getClienteId())
                 .orElseThrow(() -> new BusinessException("cliente not found"));
 
+        if (!proyectoRepository.isUserActive(dataAppointmentDTO.getClienteId())) {
+            throw new BusinessException("El cliente esta inactivo");
+        }
+
         agendaCitaRepository.validateVeterinarian(dataAppointmentDTO.getMedicoId())
                 .orElseThrow(() -> new BusinessException("El veterinario no existe o esta inactivo"));
 

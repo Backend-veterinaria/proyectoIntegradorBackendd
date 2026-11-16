@@ -35,6 +35,7 @@ public class ProyectoServiceImpl implements ProyectoService {
     // Hash BCrypt: $2a$, $2b$ o $2y$, costo de 2 dígitos y 53 caracteres (sal + hash)
     // Mismo mensaje si el usuario no existe o la contraseña es incorrecta: no revela qué usuarios existen
     private static final String INVALID_CREDENTIALS = "Usuario o contraseña incorrectos";
+    private static final String INACTIVE_USER = "Usuario inactivo. Comuniquese con el administrador";
 
     private volatile String dummyHash;
 
@@ -90,11 +91,17 @@ public class ProyectoServiceImpl implements ProyectoService {
             throw new BusinessException(INVALID_CREDENTIALS);
         }
 
+        // Propietario inactivo (CIT-03)
+        if (!proyectoRepository.isUserActive(userId)) {
+            log.debug("Login fallido: el usuario {} esta inactivo", userId);
+            throw new BusinessException(INACTIVE_USER);
+        }
+
         // El personal inactivo (VET-01) no puede iniciar sesión. Se valida después de la contraseña
         // para no revelar el estado de una cuenta a quien no conoce sus credenciales.
         if (Role.fromName(infoUser.getRole()).isStaff() && !veterinarianRepository.isStaffActive(userId)) {
             log.debug("Login fallido: el usuario {} esta inactivo", userId);
-            throw new BusinessException("Usuario inactivo. Comuniquese con el administrador");
+            throw new BusinessException(INACTIVE_USER);
         }
 
         return infoUser;

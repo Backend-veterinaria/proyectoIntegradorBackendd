@@ -265,6 +265,7 @@ class AgendaServiceImplTest {
     @Test
     void agendarAsignaSiempreElEstadoProgramada() {
         when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
+        when(proyectoRepository.isUserActive(5)).thenReturn(true);
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(true);
         when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null)).thenReturn(true);
@@ -279,6 +280,7 @@ class AgendaServiceImplTest {
     @Test
     void agendarConMascotaDeOtroClienteFalla() {
         when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
+        when(proyectoRepository.isUserActive(5)).thenReturn(true);
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(false);
 
@@ -290,12 +292,23 @@ class AgendaServiceImplTest {
     @Test
     void agendarEnHorarioOcupadoFalla() {
         when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
+        when(proyectoRepository.isUserActive(5)).thenReturn(true);
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(true);
         when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null)).thenReturn(false);
 
         BusinessException e = assertThrows(BusinessException.class, () -> service.scheduleAnAppointment(nuevaCita()));
         assertEquals("El veterinario no tiene disponible ese horario", e.getMessage());
+    }
+
+    @Test
+    void agendarAClienteInactivoFalla() {
+        when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
+        when(proyectoRepository.isUserActive(5)).thenReturn(false);
+
+        BusinessException e = assertThrows(BusinessException.class, () -> service.scheduleAnAppointment(nuevaCita()));
+        assertEquals("El cliente esta inactivo", e.getMessage());
+        verify(agendaCitaRepository, never()).insertAgendaCita(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -319,6 +332,7 @@ class AgendaServiceImplTest {
     @Test
     void agendarSinEstadoProgramadaEnBdEsErrorInterno() {
         when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
+        when(proyectoRepository.isUserActive(5)).thenReturn(true);
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(true);
         when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null)).thenReturn(true);

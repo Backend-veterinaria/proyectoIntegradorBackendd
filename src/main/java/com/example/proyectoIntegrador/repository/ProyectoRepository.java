@@ -59,6 +59,12 @@ public interface ProyectoRepository {
     boolean existsUsernameOrEmail(String username, String email);
 
     /**
+     * Indica si el usuario está activo (cliente.estado_cliente; un valor nulo cuenta como activo).
+     * Un usuario que no existe no está activo. No captura excepciones.
+     */
+    boolean isUserActive(int clienteId);
+
+    /**
      * Recupera el ID de un usuario basado en su nombre de usuario.
      *
      * @param userName el nombre de usuario del cual se desea obtener el ID

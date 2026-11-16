@@ -212,7 +212,7 @@ class ProyectoServiceImplTest {
         when(proyectoRepository.validateUser("demo")).thenReturn(Optional.empty());
 
         InfoUser demo = proyectoService.loginService(login("demo", "demo123"));
-        assertEquals("1", demo.getIdClient());
+        assertEquals("0", demo.getIdClient());
         assertEquals("ADMIN", demo.getRole());
     }
 

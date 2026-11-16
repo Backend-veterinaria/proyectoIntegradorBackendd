@@ -54,7 +54,9 @@ public class ProyectoServiceImpl implements ProyectoService {
     //  rol ADMIN, para poder recorrer todas las pantallas.
     private static final String DEMO_USERNAME = "demo";
     private static final String DEMO_PASSWORD = "demo123";
-    private static final String DEMO_USER_ID = "1";
+    // 0: ningún cliente real tiene ese id (los ids de la BD empiezan en 1). Con 1, el demo se confundía
+    // con el cliente 1 (por ejemplo, no podía inactivarlo por ser "su propia cuenta").
+    private static final String DEMO_USER_ID = "0";
 
     @Override
     public InfoUser loginService(LoginDTO loginDTO) {

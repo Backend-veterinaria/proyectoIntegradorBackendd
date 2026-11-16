@@ -60,6 +60,10 @@ public class NotificationServiceimpl implements NotificationService {
         } catch (IOException e) {
             clientes.remove(client_id, emitter);
             emitter.completeWithError(e);
+        } catch (IllegalStateException e) {
+            // La conexión ya se había cerrado (el cliente se desconectó y aún no se quitó del mapa).
+            // La notificación es opcional: no debe hacer fallar el agendamiento, que ya se guardó.
+            clientes.remove(client_id, emitter);
         }
     }
 

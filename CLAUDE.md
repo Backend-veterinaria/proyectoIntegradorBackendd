@@ -12,7 +12,7 @@ Use the Maven wrapper (`mvnw.cmd` on Windows, `./mvnw` in Git Bash):
 
 - Build: `./mvnw clean package` (add `-DskipTests` to skip tests)
 - Run: `./mvnw spring-boot:run` (serves on port 8080)
-- All tests: `./mvnw test`
+- All tests + coverage report: `./mvnw verify` (the notes after the Security section say which tests need a DB or Docker)
 - Single test: `./mvnw test -Dtest=ProyectoIntegradorApplicationTests` (or `-Dtest=Class#method`)
 
 The local machine runs JDK 23, where javac no longer runs annotation processors by default; `pom.xml` sets `maven.compiler.proc=full` so Lombok still works. Don't remove it — without it the build fails with hundreds of "cannot find symbol" errors (`log`, getters/setters).
@@ -38,9 +38,14 @@ The local machine runs JDK 23, where javac no longer runs annotation processors 
 
 Passwords are hashed with BCrypt (`config/PasswordConfig`). Legacy plaintext passwords in `user_credentials.password_hash` are re-hashed on the user's next successful login (`ProyectoServiceImpl.passwordMatches`).
 
-`ProyectoServiceImpl` has a hardcoded demo login (`demo` / `demo123`) marked `TODO: ELIMINAR` — intentional for demos, must be removed before any deployment.
+`ProyectoServiceImpl` has a hardcoded demo login (`demo` / `demo123`, ADMIN, user id 0 so it never collides with a real `cliente_id`) marked `TODO: ELIMINAR` — intentional for demos, must be removed before any deployment.
 
-`ProyectoIntegradorApplicationTests` is a `@SpringBootTest` context-load test and needs the database reachable (the app also won't start without it). All other tests (`@WebMvcTest` controller tests, Mockito service tests, enum tests) run without a DB: `./mvnw test -Dtest='!ProyectoIntegradorApplicationTests'`.
+`ProyectoIntegradorApplicationTests` is a `@SpringBootTest` context-load test and needs the real database reachable (the app also won't start without it). Run everything else with `./mvnw verify -Dtest='!ProyectoIntegradorApplicationTests'`:
+
+- Unit tests (`@WebMvcTest` controllers, Mockito services, enums) need nothing.
+- `integration/VeterinaryFlowIntegrationTest` (QA-03) runs the whole API flow (register → vet → pet → appointment → attention → treatment/vaccine → reports) against a throwaway PostgreSQL 16 in Docker (Testcontainers + `@ServiceConnection`), built from `sql/schema.sql` + `src/test/resources/integration/seed.sql`. It's skipped (not failed) when Docker isn't available. Seed ids are deliberately non-standard, so code must not hardcode `rol_id`/`estado_id`.
+- `sql/schema.sql` is a `pg_dump --schema-only` of the dev DB. When you add a schema-change script to `sql/`, regenerate it (or append the same DDL), otherwise the integration test runs against a stale schema.
+- JaCoCo (QA-02): `verify` writes `target/site/jacoco/index.html` and fails if line coverage of `services.Impl` drops below 70 %.
 
 ## Database
 

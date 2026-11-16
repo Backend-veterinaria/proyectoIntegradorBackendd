@@ -1,0 +1,964 @@
+-- =====================================================================================
+-- Esquema completo de la base de datos (solo estructura, sin datos)
+-- Generado el 2026-11-16 con: pg_dump --schema-only --no-owner --no-privileges (PostgreSQL 16)
+-- Incluye los cambios de los scripts VET-01, VET-03, VET-04, CIT-02, HC-01 y HC-04.
+-- Lo usan las pruebas de integración (src/test/.../integration) para crear una base desechable.
+-- Si se cambia el esquema con un script nuevo de sql/, regenerar este archivo.
+-- =====================================================================================
+
+--
+-- PostgreSQL database dump
+--
+
+\restrict fx3YYPty5Hm2KqwP4BqdJpyWpzyyiVF71YOaUYWjQbNWuNtvmoV13cuzVfMl7Mn
+
+-- Dumped from database version 16.15 (Debian 16.15-1.pgdg13+2)
+-- Dumped by pg_dump version 16.14
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: agenda_cita; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agenda_cita (
+    agenda_id integer NOT NULL,
+    estado_id integer NOT NULL,
+    cliente_id integer NOT NULL,
+    cita_id integer NOT NULL,
+    medico_id integer NOT NULL,
+    mascota_id integer NOT NULL
+);
+
+
+--
+-- Name: agenda_cita_agenda_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agenda_cita_agenda_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agenda_cita_agenda_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agenda_cita_agenda_id_seq OWNED BY public.agenda_cita.agenda_id;
+
+
+--
+-- Name: atencion_clinica; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.atencion_clinica (
+    atencion_id integer NOT NULL,
+    agenda_id integer NOT NULL,
+    mascota_id integer NOT NULL,
+    medico_id integer NOT NULL,
+    fecha_atencion timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    motivo_consulta character varying(500),
+    diagnostico text NOT NULL,
+    procedimientos text,
+    observaciones text,
+    peso_kg numeric(6,2),
+    temperatura_c numeric(4,1),
+    CONSTRAINT atencion_clinica_peso_kg_check CHECK ((peso_kg > (0)::numeric)),
+    CONSTRAINT atencion_clinica_temperatura_c_check CHECK (((temperatura_c >= (30)::numeric) AND (temperatura_c <= (45)::numeric)))
+);
+
+
+--
+-- Name: atencion_clinica_atencion_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.atencion_clinica_atencion_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: atencion_clinica_atencion_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.atencion_clinica_atencion_id_seq OWNED BY public.atencion_clinica.atencion_id;
+
+
+--
+-- Name: cita; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cita (
+    cita_id integer NOT NULL,
+    descripcion character varying(255),
+    fecha date NOT NULL,
+    hora time without time zone NOT NULL
+);
+
+
+--
+-- Name: cita_cita_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.cita_cita_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: cita_cita_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.cita_cita_id_seq OWNED BY public.cita.cita_id;
+
+
+--
+-- Name: cliente; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cliente (
+    cliente_id integer NOT NULL,
+    nombre character varying(100) NOT NULL,
+    apellido character varying(100) NOT NULL,
+    direccion character varying(255),
+    telefono character varying(30),
+    email character varying(150),
+    fecha_registro date DEFAULT CURRENT_DATE NOT NULL,
+    estado_cliente boolean DEFAULT true NOT NULL,
+    username character varying(100) NOT NULL,
+    rol_id integer
+);
+
+
+--
+-- Name: cliente_cliente_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.cliente_cliente_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: cliente_cliente_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.cliente_cliente_id_seq OWNED BY public.cliente.cliente_id;
+
+
+--
+-- Name: estado_cita; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.estado_cita (
+    estado_id integer NOT NULL,
+    descripcion character varying(100) NOT NULL
+);
+
+
+--
+-- Name: estado_cita_estado_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.estado_cita ALTER COLUMN estado_id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.estado_cita_estado_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: mascota; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.mascota (
+    mascota_id integer NOT NULL,
+    codigo character varying(50),
+    nombre character varying(100) NOT NULL,
+    edad integer NOT NULL,
+    genero character varying(30) NOT NULL,
+    cliente_id integer NOT NULL,
+    raza_id integer,
+    activo boolean DEFAULT true NOT NULL
+);
+
+
+--
+-- Name: mascota_mascota_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.mascota_mascota_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: mascota_mascota_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.mascota_mascota_id_seq OWNED BY public.mascota.mascota_id;
+
+
+--
+-- Name: medico; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medico (
+    medico_id integer NOT NULL,
+    identificacion_medico integer NOT NULL
+);
+
+
+--
+-- Name: medico_medico_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.medico_medico_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: medico_medico_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.medico_medico_id_seq OWNED BY public.medico.medico_id;
+
+
+--
+-- Name: personal; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.personal (
+    personal_id integer NOT NULL,
+    nombre character varying(100) NOT NULL,
+    apellido character varying(100) NOT NULL,
+    rol_id integer,
+    activo boolean DEFAULT true NOT NULL,
+    cliente_id integer
+);
+
+
+--
+-- Name: personal_personal_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.personal_personal_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: personal_personal_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.personal_personal_id_seq OWNED BY public.personal.personal_id;
+
+
+--
+-- Name: raza; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.raza (
+    raza_id integer NOT NULL,
+    descripcion character varying(100) NOT NULL
+);
+
+
+--
+-- Name: raza_raza_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.raza_raza_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: raza_raza_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.raza_raza_id_seq OWNED BY public.raza.raza_id;
+
+
+--
+-- Name: rol; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rol (
+    rol_id integer NOT NULL,
+    descripcion character varying(100) NOT NULL
+);
+
+
+--
+-- Name: rol_rol_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.rol_rol_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: rol_rol_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.rol_rol_id_seq OWNED BY public.rol.rol_id;
+
+
+--
+-- Name: sesiones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sesiones (
+    sesion_id integer NOT NULL,
+    usuario_id integer NOT NULL,
+    token_sesion character varying(100) NOT NULL,
+    fecha_inicio timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    fecha_fin timestamp without time zone,
+    estado character varying(30) NOT NULL
+);
+
+
+--
+-- Name: sesiones_sesion_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.sesiones_sesion_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: sesiones_sesion_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.sesiones_sesion_id_seq OWNED BY public.sesiones.sesion_id;
+
+
+--
+-- Name: tratamiento; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tratamiento (
+    tratamiento_id integer NOT NULL,
+    mascota_id integer NOT NULL,
+    atencion_id integer,
+    medico_id integer NOT NULL,
+    medicamento character varying(200) NOT NULL,
+    dosis character varying(200) NOT NULL,
+    frecuencia character varying(200),
+    indicaciones text,
+    fecha_inicio date NOT NULL,
+    fecha_fin date,
+    estado character varying(20) DEFAULT 'EN_CURSO'::character varying NOT NULL,
+    fecha_registro timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT tratamiento_check CHECK (((fecha_fin IS NULL) OR (fecha_fin >= fecha_inicio))),
+    CONSTRAINT tratamiento_estado_check CHECK (((estado)::text = ANY ((ARRAY['EN_CURSO'::character varying, 'FINALIZADO'::character varying, 'SUSPENDIDO'::character varying])::text[])))
+);
+
+
+--
+-- Name: tratamiento_tratamiento_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tratamiento_tratamiento_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tratamiento_tratamiento_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tratamiento_tratamiento_id_seq OWNED BY public.tratamiento.tratamiento_id;
+
+
+--
+-- Name: user_credentials; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_credentials (
+    credencial_id integer NOT NULL,
+    usuario_id integer NOT NULL,
+    password_hash character varying(255) NOT NULL
+);
+
+
+--
+-- Name: user_credentials_credencial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.user_credentials_credencial_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: user_credentials_credencial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.user_credentials_credencial_id_seq OWNED BY public.user_credentials.credencial_id;
+
+
+--
+-- Name: vacuna; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.vacuna (
+    vacuna_id integer NOT NULL,
+    mascota_id integer NOT NULL,
+    atencion_id integer,
+    medico_id integer NOT NULL,
+    nombre character varying(200) NOT NULL,
+    lote character varying(100),
+    fecha_aplicacion date NOT NULL,
+    proxima_dosis date,
+    observaciones text,
+    fecha_registro timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT vacuna_check CHECK (((proxima_dosis IS NULL) OR (proxima_dosis > fecha_aplicacion)))
+);
+
+
+--
+-- Name: vacuna_vacuna_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.vacuna_vacuna_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: vacuna_vacuna_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.vacuna_vacuna_id_seq OWNED BY public.vacuna.vacuna_id;
+
+
+--
+-- Name: agenda_cita agenda_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agenda_cita ALTER COLUMN agenda_id SET DEFAULT nextval('public.agenda_cita_agenda_id_seq'::regclass);
+
+
+--
+-- Name: atencion_clinica atencion_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.atencion_clinica ALTER COLUMN atencion_id SET DEFAULT nextval('public.atencion_clinica_atencion_id_seq'::regclass);
+
+
+--
+-- Name: cita cita_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cita ALTER COLUMN cita_id SET DEFAULT nextval('public.cita_cita_id_seq'::regclass);
+
+
+--
+-- Name: cliente cliente_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cliente ALTER COLUMN cliente_id SET DEFAULT nextval('public.cliente_cliente_id_seq'::regclass);
+
+
+--
+-- Name: mascota mascota_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mascota ALTER COLUMN mascota_id SET DEFAULT nextval('public.mascota_mascota_id_seq'::regclass);
+
+
+--
+-- Name: medico medico_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medico ALTER COLUMN medico_id SET DEFAULT nextval('public.medico_medico_id_seq'::regclass);
+
+
+--
+-- Name: personal personal_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.personal ALTER COLUMN personal_id SET DEFAULT nextval('public.personal_personal_id_seq'::regclass);
+
+
+--
+-- Name: raza raza_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.raza ALTER COLUMN raza_id SET DEFAULT nextval('public.raza_raza_id_seq'::regclass);
+
+
+--
+-- Name: rol rol_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rol ALTER COLUMN rol_id SET DEFAULT nextval('public.rol_rol_id_seq'::regclass);
+
+
+--
+-- Name: sesiones sesion_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sesiones ALTER COLUMN sesion_id SET DEFAULT nextval('public.sesiones_sesion_id_seq'::regclass);
+
+
+--
+-- Name: tratamiento tratamiento_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tratamiento ALTER COLUMN tratamiento_id SET DEFAULT nextval('public.tratamiento_tratamiento_id_seq'::regclass);
+
+
+--
+-- Name: user_credentials credencial_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_credentials ALTER COLUMN credencial_id SET DEFAULT nextval('public.user_credentials_credencial_id_seq'::regclass);
+
+
+--
+-- Name: vacuna vacuna_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vacuna ALTER COLUMN vacuna_id SET DEFAULT nextval('public.vacuna_vacuna_id_seq'::regclass);
+
+
+--
+-- Name: agenda_cita agenda_cita_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agenda_cita
+    ADD CONSTRAINT agenda_cita_pkey PRIMARY KEY (agenda_id);
+
+
+--
+-- Name: atencion_clinica atencion_clinica_agenda_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.atencion_clinica
+    ADD CONSTRAINT atencion_clinica_agenda_id_key UNIQUE (agenda_id);
+
+
+--
+-- Name: atencion_clinica atencion_clinica_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.atencion_clinica
+    ADD CONSTRAINT atencion_clinica_pkey PRIMARY KEY (atencion_id);
+
+
+--
+-- Name: cita cita_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cita
+    ADD CONSTRAINT cita_pkey PRIMARY KEY (cita_id);
+
+
+--
+-- Name: cliente cliente_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cliente
+    ADD CONSTRAINT cliente_pkey PRIMARY KEY (cliente_id);
+
+
+--
+-- Name: cliente cliente_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cliente
+    ADD CONSTRAINT cliente_username_key UNIQUE (username);
+
+
+--
+-- Name: estado_cita estado_cita_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.estado_cita
+    ADD CONSTRAINT estado_cita_pkey PRIMARY KEY (estado_id);
+
+
+--
+-- Name: mascota mascota_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mascota
+    ADD CONSTRAINT mascota_pkey PRIMARY KEY (mascota_id);
+
+
+--
+-- Name: medico medico_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medico
+    ADD CONSTRAINT medico_pkey PRIMARY KEY (medico_id);
+
+
+--
+-- Name: personal personal_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.personal
+    ADD CONSTRAINT personal_pkey PRIMARY KEY (personal_id);
+
+
+--
+-- Name: raza raza_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.raza
+    ADD CONSTRAINT raza_pkey PRIMARY KEY (raza_id);
+
+
+--
+-- Name: rol rol_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rol
+    ADD CONSTRAINT rol_pkey PRIMARY KEY (rol_id);
+
+
+--
+-- Name: sesiones sesiones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sesiones
+    ADD CONSTRAINT sesiones_pkey PRIMARY KEY (sesion_id);
+
+
+--
+-- Name: tratamiento tratamiento_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tratamiento
+    ADD CONSTRAINT tratamiento_pkey PRIMARY KEY (tratamiento_id);
+
+
+--
+-- Name: user_credentials user_credentials_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_credentials
+    ADD CONSTRAINT user_credentials_pkey PRIMARY KEY (credencial_id);
+
+
+--
+-- Name: vacuna vacuna_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vacuna
+    ADD CONSTRAINT vacuna_pkey PRIMARY KEY (vacuna_id);
+
+
+--
+-- Name: idx_agenda_cita_cliente; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_agenda_cita_cliente ON public.agenda_cita USING btree (cliente_id);
+
+
+--
+-- Name: idx_cita_fecha_hora; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_cita_fecha_hora ON public.cita USING btree (fecha, hora);
+
+
+--
+-- Name: idx_mascota_cliente; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_mascota_cliente ON public.mascota USING btree (cliente_id);
+
+
+--
+-- Name: ix_atencion_clinica_mascota; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_atencion_clinica_mascota ON public.atencion_clinica USING btree (mascota_id, fecha_atencion DESC);
+
+
+--
+-- Name: ix_tratamiento_mascota; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_tratamiento_mascota ON public.tratamiento USING btree (mascota_id, fecha_inicio DESC);
+
+
+--
+-- Name: ix_vacuna_mascota; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_vacuna_mascota ON public.vacuna USING btree (mascota_id, fecha_aplicacion DESC);
+
+
+--
+-- Name: ix_vacuna_proxima_dosis; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_vacuna_proxima_dosis ON public.vacuna USING btree (proxima_dosis) WHERE (proxima_dosis IS NOT NULL);
+
+
+--
+-- Name: ux_personal_cliente_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_personal_cliente_id ON public.personal USING btree (cliente_id);
+
+
+--
+-- Name: agenda_cita agenda_cita_cita_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agenda_cita
+    ADD CONSTRAINT agenda_cita_cita_id_fkey FOREIGN KEY (cita_id) REFERENCES public.cita(cita_id);
+
+
+--
+-- Name: agenda_cita agenda_cita_cliente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agenda_cita
+    ADD CONSTRAINT agenda_cita_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.cliente(cliente_id);
+
+
+--
+-- Name: agenda_cita agenda_cita_estado_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agenda_cita
+    ADD CONSTRAINT agenda_cita_estado_id_fkey FOREIGN KEY (estado_id) REFERENCES public.estado_cita(estado_id);
+
+
+--
+-- Name: agenda_cita agenda_cita_mascota_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agenda_cita
+    ADD CONSTRAINT agenda_cita_mascota_id_fkey FOREIGN KEY (mascota_id) REFERENCES public.mascota(mascota_id);
+
+
+--
+-- Name: agenda_cita agenda_cita_medico_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agenda_cita
+    ADD CONSTRAINT agenda_cita_medico_id_fkey FOREIGN KEY (medico_id) REFERENCES public.medico(medico_id);
+
+
+--
+-- Name: atencion_clinica atencion_clinica_agenda_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.atencion_clinica
+    ADD CONSTRAINT atencion_clinica_agenda_id_fkey FOREIGN KEY (agenda_id) REFERENCES public.agenda_cita(agenda_id);
+
+
+--
+-- Name: atencion_clinica atencion_clinica_mascota_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.atencion_clinica
+    ADD CONSTRAINT atencion_clinica_mascota_id_fkey FOREIGN KEY (mascota_id) REFERENCES public.mascota(mascota_id);
+
+
+--
+-- Name: atencion_clinica atencion_clinica_medico_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.atencion_clinica
+    ADD CONSTRAINT atencion_clinica_medico_id_fkey FOREIGN KEY (medico_id) REFERENCES public.medico(medico_id);
+
+
+--
+-- Name: cliente cliente_rol_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cliente
+    ADD CONSTRAINT cliente_rol_id_fkey FOREIGN KEY (rol_id) REFERENCES public.rol(rol_id);
+
+
+--
+-- Name: mascota mascota_cliente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mascota
+    ADD CONSTRAINT mascota_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.cliente(cliente_id);
+
+
+--
+-- Name: mascota mascota_raza_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mascota
+    ADD CONSTRAINT mascota_raza_id_fkey FOREIGN KEY (raza_id) REFERENCES public.raza(raza_id);
+
+
+--
+-- Name: medico medico_identificacion_medico_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medico
+    ADD CONSTRAINT medico_identificacion_medico_fkey FOREIGN KEY (identificacion_medico) REFERENCES public.personal(personal_id);
+
+
+--
+-- Name: personal personal_cliente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.personal
+    ADD CONSTRAINT personal_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.cliente(cliente_id);
+
+
+--
+-- Name: personal personal_rol_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.personal
+    ADD CONSTRAINT personal_rol_id_fkey FOREIGN KEY (rol_id) REFERENCES public.rol(rol_id);
+
+
+--
+-- Name: sesiones sesiones_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sesiones
+    ADD CONSTRAINT sesiones_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.cliente(cliente_id);
+
+
+--
+-- Name: tratamiento tratamiento_atencion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tratamiento
+    ADD CONSTRAINT tratamiento_atencion_id_fkey FOREIGN KEY (atencion_id) REFERENCES public.atencion_clinica(atencion_id);
+
+
+--
+-- Name: tratamiento tratamiento_mascota_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tratamiento
+    ADD CONSTRAINT tratamiento_mascota_id_fkey FOREIGN KEY (mascota_id) REFERENCES public.mascota(mascota_id);
+
+
+--
+-- Name: tratamiento tratamiento_medico_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tratamiento
+    ADD CONSTRAINT tratamiento_medico_id_fkey FOREIGN KEY (medico_id) REFERENCES public.medico(medico_id);
+
+
+--
+-- Name: user_credentials user_credentials_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_credentials
+    ADD CONSTRAINT user_credentials_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.cliente(cliente_id);
+
+
+--
+-- Name: vacuna vacuna_atencion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vacuna
+    ADD CONSTRAINT vacuna_atencion_id_fkey FOREIGN KEY (atencion_id) REFERENCES public.atencion_clinica(atencion_id);
+
+
+--
+-- Name: vacuna vacuna_mascota_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vacuna
+    ADD CONSTRAINT vacuna_mascota_id_fkey FOREIGN KEY (mascota_id) REFERENCES public.mascota(mascota_id);
+
+
+--
+-- Name: vacuna vacuna_medico_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vacuna
+    ADD CONSTRAINT vacuna_medico_id_fkey FOREIGN KEY (medico_id) REFERENCES public.medico(medico_id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict fx3YYPty5Hm2KqwP4BqdJpyWpzyyiVF71YOaUYWjQbNWuNtvmoV13cuzVfMl7Mn
+

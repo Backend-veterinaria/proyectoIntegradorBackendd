@@ -1,0 +1,157 @@
+package com.example.proyectoIntegrador.controllers;
+
+import com.example.proyectoIntegrador.controllers.Impl.ClinicalHistoryControllerImpl;
+import com.example.proyectoIntegrador.exceptions.BusinessException;
+import com.example.proyectoIntegrador.models.ClinicalAttention;
+import com.example.proyectoIntegrador.security.AuthenticatedUser;
+import com.example.proyectoIntegrador.security.JwtService;
+import com.example.proyectoIntegrador.security.Role;
+import com.example.proyectoIntegrador.security.SecurityConfig;
+import com.example.proyectoIntegrador.services.ClinicalHistoryService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.hamcrest.Matchers.hasItem;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(ClinicalHistoryControllerImpl.class)
+@Import({SecurityConfig.class, JwtService.class})
+class ClinicalHistoryControllerImplTest {
+
+    private static final String BODY = """
+            {"agendaId":100,"motivoConsulta":"Rasca el oido","diagnostico":"Otitis externa",
+             "procedimientos":"Limpieza","pesoKg":12.5,"temperaturaC":38.6}
+            """;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @MockBean
+    private ClinicalHistoryService clinicalHistoryService;
+
+    private String bearer(int userId, Role role) {
+        return "Bearer " + jwtService.generateToken(userId, "usuario", role);
+    }
+
+    private static ClinicalAttention saved() {
+        ClinicalAttention a = new ClinicalAttention();
+        a.setAtencionId(500);
+        a.setAgendaId(100);
+        a.setDiagnostico("Otitis externa");
+        return a;
+    }
+
+    @Test
+    void veterinarioRegistraAtencion() throws Exception {
+        when(clinicalHistoryService.registerAttention(any(), any())).thenReturn(saved());
+
+        mockMvc.perform(post("/integrador/clinicalHistory/attentions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"))
+                .andExpect(jsonPath("$.responseObj.atencionId").value(500));
+
+        verify(clinicalHistoryService).registerAttention(eq(new AuthenticatedUser(40, "usuario", Role.VETERINARIO)), any());
+    }
+
+    @Test
+    void sinDiagnosticoEsErrorDeValidacion() throws Exception {
+        mockMvc.perform(post("/integrador/clinicalHistory/attentions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"agendaId\":100,\"diagnostico\":\" \",\"temperaturaC\":50}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6617"))
+                .andExpect(jsonPath("$.responseObj", hasItem("diagnostico: required field diagnostico")))
+                .andExpect(jsonPath("$.responseObj", hasItem("temperaturaC: temperaturaC must be between 30 and 45")));
+
+        verify(clinicalHistoryService, never()).registerAttention(any(), any());
+    }
+
+    @Test
+    void errorDeNegocioSeMuestra() throws Exception {
+        when(clinicalHistoryService.registerAttention(any(), any()))
+                .thenThrow(new BusinessException("La cita ya tiene una atencion registrada"));
+
+        mockMvc.perform(post("/integrador/clinicalHistory/attentions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6621"))
+                .andExpect(jsonPath("$.responseObj").value("La cita ya tiene una atencion registrada"));
+    }
+
+    @Test
+    void citaDeOtroVeterinarioDevuelve403() throws Exception {
+        when(clinicalHistoryService.registerAttention(any(), any()))
+                .thenThrow(new AccessDeniedException("Solo el veterinario asignado puede registrar la atencion de la cita"));
+
+        mockMvc.perform(post("/integrador/clinicalHistory/attentions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(BODY))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.responseCode").value("6619"));
+    }
+
+    @Test
+    void adminYClienteNoRegistranAtenciones() throws Exception {
+        for (Role role : new Role[]{Role.ADMIN, Role.CLIENTE}) {
+            mockMvc.perform(post("/integrador/clinicalHistory/attentions")
+                            .header(HttpHeaders.AUTHORIZATION, bearer(1, role))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(BODY))
+                    .andExpect(status().isForbidden());
+        }
+        verify(clinicalHistoryService, never()).registerAttention(any(), any());
+    }
+
+    @Test
+    void adminConsultaAtencion() throws Exception {
+        when(clinicalHistoryService.getAttention(any(), eq(500))).thenReturn(saved());
+
+        mockMvc.perform(get("/integrador/clinicalHistory/attentions/500")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, Role.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseObj.diagnostico").value("Otitis externa"));
+    }
+
+    @Test
+    void clienteNoConsultaAtencion() throws Exception {
+        mockMvc.perform(get("/integrador/clinicalHistory/attentions/500")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE)))
+                .andExpect(status().isForbidden());
+
+        verify(clinicalHistoryService, never()).getAttention(any(), anyInt());
+    }
+
+    @Test
+    void sinTokenDevuelve401() throws Exception {
+        mockMvc.perform(post("/integrador/clinicalHistory/attentions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(BODY))
+                .andExpect(status().isUnauthorized());
+    }
+}

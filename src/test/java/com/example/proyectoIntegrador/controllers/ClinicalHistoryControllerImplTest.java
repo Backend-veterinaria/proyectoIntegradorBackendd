@@ -26,10 +26,12 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -158,7 +160,7 @@ class ClinicalHistoryControllerImplTest {
         InfoMascota mascota = new InfoMascota();
         mascota.setIdMascota(7);
         when(clinicalHistoryService.getPetHistory(any(), eq(7)))
-                .thenReturn(new ClinicalHistory(mascota, List.of(saved())));
+                .thenReturn(new ClinicalHistory(mascota, List.of(saved()), List.of(), List.of()));
 
         mockMvc.perform(get("/integrador/clinicalHistory/pets/7")
                         .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE)))
@@ -188,6 +190,78 @@ class ClinicalHistoryControllerImplTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.responseCode").value("6615"))
                 .andExpect(jsonPath("$.responseObj").value("La mascota no existe"));
+    }
+
+    @Test
+    void veterinarioRegistraTratamiento() throws Exception {
+        com.example.proyectoIntegrador.models.Treatment t = new com.example.proyectoIntegrador.models.Treatment();
+        t.setTratamientoId(300);
+        t.setEstado("EN_CURSO");
+        when(clinicalHistoryService.registerTreatment(any(), any())).thenReturn(t);
+
+        mockMvc.perform(post("/integrador/clinicalHistory/treatments")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mascotaId\":7,\"medicamento\":\"Amoxicilina\",\"dosis\":\"250 mg\",\"fechaInicio\":\"20261120\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseObj.tratamientoId").value(300));
+    }
+
+    @Test
+    void tratamientoSinDosisEsErrorDeValidacion() throws Exception {
+        mockMvc.perform(post("/integrador/clinicalHistory/treatments")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mascotaId\":7,\"medicamento\":\"Amoxicilina\",\"fechaInicio\":\"2026-11-20\"}"))
+                .andExpect(jsonPath("$.responseCode").value("6617"))
+                .andExpect(jsonPath("$.responseObj", hasItem("dosis: required field dosis")))
+                .andExpect(jsonPath("$.responseObj", hasItem("fechaInicio: fechaInicio must have format yyyyMMdd")));
+
+        verify(clinicalHistoryService, never()).registerTreatment(any(), any());
+    }
+
+    @Test
+    void veterinarioFinalizaTratamiento() throws Exception {
+        when(clinicalHistoryService.changeTreatmentStatus(any(), eq(300),
+                eq(com.example.proyectoIntegrador.enums.TreatmentStatus.FINALIZADO)))
+                .thenReturn(new com.example.proyectoIntegrador.models.Treatment());
+
+        mockMvc.perform(patch("/integrador/clinicalHistory/treatments/300/status")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\":\"FINALIZADO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"));
+    }
+
+    @Test
+    void estadoDeTratamientoInvalidoEsErrorDeValidacion() throws Exception {
+        mockMvc.perform(patch("/integrador/clinicalHistory/treatments/300/status")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\":\"EN_CURSO\"}"))
+                .andExpect(jsonPath("$.responseCode").value("6617"));
+    }
+
+    @Test
+    void clienteNoRegistraVacunas() throws Exception {
+        mockMvc.perform(post("/integrador/clinicalHistory/vaccines")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mascotaId\":7,\"nombre\":\"Rabia\",\"fechaAplicacion\":\"20261115\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(clinicalHistoryService, never()).registerVaccine(any(), any());
+    }
+
+    @Test
+    void clienteConsultaVacunasPendientes() throws Exception {
+        when(clinicalHistoryService.getUpcomingVaccines(any(), eq(30), isNull())).thenReturn(List.of());
+
+        mockMvc.perform(get("/integrador/clinicalHistory/vaccines/upcoming")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"));
     }
 
     @Test

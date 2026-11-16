@@ -2,13 +2,17 @@ package com.example.proyectoIntegrador.controllers;
 
 import com.example.proyectoIntegrador.models.ClinicalAttentionCreateDTO;
 import com.example.proyectoIntegrador.models.ResponseGeneric;
+import com.example.proyectoIntegrador.models.TreatmentCreateDTO;
+import com.example.proyectoIntegrador.models.TreatmentStatusDTO;
+import com.example.proyectoIntegrador.models.VaccineCreateDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Historia clínica de las mascotas (RF-09). Requiere sql/HC-01_atencion_clinica.sql.
+ * Historia clínica de las mascotas (RF-09, RF-10, RF-11). Requiere sql/HC-01_atencion_clinica.sql
+ * y sql/HC-04_tratamientos_vacunas.sql.
  */
 @RestController
 @RequestMapping("/integrador/clinicalHistory")
@@ -34,4 +38,28 @@ public interface ClinicalHistoryController {
      */
     @GetMapping("/pets/{mascotaId}")
     ResponseEntity<ResponseGeneric> getPetHistory(@PathVariable("mascotaId") int mascotaId);
+
+    /** Registra un tratamiento (HC-04). Solo veterinarios. */
+    @PostMapping("/treatments")
+    @PreAuthorize("hasRole('VETERINARIO')")
+    ResponseEntity<ResponseGeneric> registerTreatment(@Valid @RequestBody TreatmentCreateDTO dto);
+
+    /** Finaliza o suspende un tratamiento (HC-04). Solo veterinarios. */
+    @PatchMapping("/treatments/{tratamientoId}/status")
+    @PreAuthorize("hasRole('VETERINARIO')")
+    ResponseEntity<ResponseGeneric> changeTreatmentStatus(@PathVariable("tratamientoId") int tratamientoId,
+                                                          @Valid @RequestBody TreatmentStatusDTO dto);
+
+    /** Registra una vacuna aplicada (HC-05). Solo veterinarios. */
+    @PostMapping("/vaccines")
+    @PreAuthorize("hasRole('VETERINARIO')")
+    ResponseEntity<ResponseGeneric> registerVaccine(@Valid @RequestBody VaccineCreateDTO dto);
+
+    /**
+     * Vacunas con la próxima dosis vencida o que vence en los próximos {@code days} días (HC-05).
+     * El personal ve todas (o las de clienteId); el cliente, las de sus mascotas.
+     */
+    @GetMapping("/vaccines/upcoming")
+    ResponseEntity<ResponseGeneric> getUpcomingVaccines(@RequestParam(name = "days", defaultValue = "30") int days,
+                                                        @RequestParam(name = "clienteId", required = false) Integer clienteId);
 }

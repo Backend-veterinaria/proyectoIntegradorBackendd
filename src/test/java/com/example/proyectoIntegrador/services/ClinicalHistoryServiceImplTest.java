@@ -52,12 +52,14 @@ class ClinicalHistoryServiceImplTest {
     private VeterinarianRepository veterinarianRepository;
     @Mock
     private PetsRepository petsRepository;
+    @Mock
+    private com.example.proyectoIntegrador.repository.TreatmentVaccineRepository treatmentVaccineRepository;
 
     private ClinicalHistoryServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ClinicalHistoryServiceImpl(clinicalHistoryRepository, agendaCitaRepository, veterinarianRepository, petsRepository);
+        service = new ClinicalHistoryServiceImpl(clinicalHistoryRepository, agendaCitaRepository, veterinarianRepository, petsRepository, treatmentVaccineRepository);
     }
 
     private static VeterinarianAgendaItem cita(String estado, int estadoId, int medicoId, LocalDate fecha) {

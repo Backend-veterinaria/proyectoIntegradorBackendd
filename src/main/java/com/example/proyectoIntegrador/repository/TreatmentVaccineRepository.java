@@ -34,6 +34,9 @@ public interface TreatmentVaccineRepository {
 
     Optional<Vaccine> findVaccine(int vacunaId);
 
+    /** Indica si la mascota ya tiene esa vacuna (nombre sin importar mayúsculas) aplicada en esa fecha. */
+    boolean existsVaccine(int mascotaId, String nombre, LocalDate fechaAplicacion);
+
     /** Vacunas de una mascota, de la más reciente a la más antigua. */
     List<Vaccine> findVaccinesByMascota(int mascotaId);
 

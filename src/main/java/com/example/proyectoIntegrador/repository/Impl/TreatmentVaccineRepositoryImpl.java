@@ -166,6 +166,19 @@ public class TreatmentVaccineRepositoryImpl implements TreatmentVaccineRepositor
     }
 
     @Override
+    public boolean existsVaccine(int mascotaId, String nombre, LocalDate fechaAplicacion) {
+        String sql = """
+                SELECT EXISTS (
+                    SELECT 1 FROM vacuna
+                    WHERE mascota_id = ? AND LOWER(TRIM(nombre)) = LOWER(TRIM(?)) AND fecha_aplicacion = ?
+                )
+                """;
+
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, mascotaId, nombre,
+                sqlDate(fechaAplicacion)));
+    }
+
+    @Override
     public List<Vaccine> findVaccinesByMascota(int mascotaId) {
         return jdbcTemplate.query(SELECT_VACCINE + " WHERE x.mascota_id = ? ORDER BY x.fecha_aplicacion DESC, x.vacuna_id DESC",
                 VACCINE_MAPPER, mascotaId);

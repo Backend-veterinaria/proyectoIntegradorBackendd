@@ -13,6 +13,8 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -116,6 +118,11 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
             return Optional.empty();
         } catch (Exception e) {
             log.error("Error al guardar la cita y agenda: {}", e.getMessage(), e);
+            // La excepción se atrapa, así que @Transactional no deshace nada por sí solo: se marca la
+            // transacción para que no quede la fila de cita sin su agenda_cita
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            }
             return Optional.empty();
         }
     }

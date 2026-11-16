@@ -217,6 +217,18 @@ class ProyectoServiceImplTest {
     }
 
     @Test
+    void loginDemoEsAdminAunqueEnLaBdSeaCliente() {
+        InfoUser enBd = new InfoUser();
+        enBd.setIdClient("12");
+        enBd.setRole("CLIENTE");
+        when(proyectoRepository.validateUser("demo")).thenReturn(Optional.of(enBd));
+
+        InfoUser demo = proyectoService.loginService(login("demo", "demo123"));
+        assertEquals("12", demo.getIdClient());
+        assertEquals("ADMIN", demo.getRole());
+    }
+
+    @Test
     void registroGuardaLaPasswordCifrada() {
         RegisterDTO dto = new RegisterDTO();
         dto.setUsername("ana");

@@ -64,15 +64,18 @@ public class ProyectoServiceImpl implements ProyectoService {
         // TODO: ELIMINAR antes de cualquier despliegue (acceso de demostración).
         if (DEMO_USERNAME.equals(loginDTO.getUsername()) && DEMO_PASSWORD.equals(loginDTO.getPassword())) {
             log.warn("Login con usuario de demostración quemado");
-            return proyectoRepository.validateUser(DEMO_USERNAME).orElseGet(() -> {
-                InfoUser demo = new InfoUser();
-                demo.setIdClient(DEMO_USER_ID);
-                demo.setName("Usuario");
-                demo.setLastName("Demo");
-                demo.setUsername(DEMO_USERNAME);
-                demo.setRole(Role.ADMIN.name());
-                return demo;
+            InfoUser demo = proyectoRepository.validateUser(DEMO_USERNAME).orElseGet(() -> {
+                InfoUser nuevo = new InfoUser();
+                nuevo.setIdClient(DEMO_USER_ID);
+                nuevo.setName("Usuario");
+                nuevo.setLastName("Demo");
+                nuevo.setUsername(DEMO_USERNAME);
+                return nuevo;
             });
+            // Siempre ADMIN, aunque en la base exista un cliente "demo" con otro rol (pasaba en las
+            // bases del equipo, donde se había registrado como CLIENTE): así recorre todas las pantallas
+            demo.setRole(Role.ADMIN.name());
+            return demo;
         }
 
         var infoUser = proyectoRepository.validateUser(loginDTO.getUsername()).orElse(null);

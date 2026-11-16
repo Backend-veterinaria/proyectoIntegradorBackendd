@@ -85,10 +85,17 @@ public class AgendaServiceImpl implements AgendaService {
                         time, programada, dataAppointmentDTO.getClienteId(), dataAppointmentDTO.getMedicoId(), dataAppointmentDTO.getMascotaId())
                 .orElseThrow(() -> new BusinessException("No se pudo agendar la cita"));
 
-        notificationService.notifyAppointmentCreation(String.valueOf(dataAppointmentDTO.getClienteId()), new DetailAppointment(dataAppointmentDTO.getDescription(),
-                dataAppointmentDTO.getFecha(),
-                dataAppointmentDTO.getHora()));
-
+        // La cita ya está guardada: la notificación en tiempo real es opcional y ningún fallo al
+        // enviarla (por ejemplo, una conexión del navegador que ya se cerró) debe convertir la
+        // reserva en un error, porque el cliente reintentaría y le saldría "horario ocupado".
+        try {
+            notificationService.notifyAppointmentCreation(String.valueOf(dataAppointmentDTO.getClienteId()),
+                    new DetailAppointment(dataAppointmentDTO.getDescription(), dataAppointmentDTO.getFecha(),
+                            dataAppointmentDTO.getHora()));
+        } catch (RuntimeException e) {
+            log.warn("La cita del cliente {} se guardo, pero no se pudo enviar la notificacion",
+                    dataAppointmentDTO.getClienteId(), e);
+        }
 
         return true;
     }

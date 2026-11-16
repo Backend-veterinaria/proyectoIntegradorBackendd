@@ -347,6 +347,44 @@ class VeterinaryFlowIntegrationTest {
     }
 
     @Test
+    @Order(23)
+    void vacunaRepetidaNoSeRegistraDosVeces() throws Exception {
+        String repetida = call(post("/integrador/clinicalHistory/vaccines"), vetToken,
+                "{\"mascotaId\":" + mascotaId + ",\"nombre\":\"rabia\",\"fechaAplicacion\":\"" + HOY + "\"}");
+        assertEquals("Esa vacuna ya esta registrada para la mascota en esa fecha", JsonPath.read(repetida, "$.responseObj"));
+    }
+
+    @Test
+    @Order(40)
+    void scriptDeUsuariosParaVeterinariosDeEjemplo() throws Exception {
+        // Veterinario creado "a mano", como los de ejemplo: personal + medico, sin usuario
+        int personalId = jdbcTemplate.queryForObject(
+                "INSERT INTO personal (nombre, apellido) VALUES ('Laura', 'Gómez') RETURNING personal_id", Integer.class);
+        jdbcTemplate.update("INSERT INTO medico (identificacion_medico) VALUES (?)", personalId);
+
+        String script = java.nio.file.Files.readString(java.nio.file.Path.of("sql/DEV_usuarios_veterinarios.sql"));
+        jdbcTemplate.execute(script);
+        jdbcTemplate.execute(script); // se puede ejecutar dos veces sin duplicar nada
+
+        // El hash de pgcrypto lo acepta el backend
+        String json = ok(post("/integrador/login"), null, "{\"username\":\"laura.gomez\",\"password\":\"Veterinario123\"}");
+        assertEquals("VETERINARIO", JsonPath.read(json, "$.responseObj.role"));
+        assertEquals(1, (int) jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM cliente WHERE username = 'laura.gomez'", Integer.class));
+    }
+
+    @Test
+    @Order(41)
+    void demoEsAdminAunqueEnLaBdExistaComoCliente() throws Exception {
+        ok(post("/integrador/register"), null, """
+                {"nombre":"Demo","apellido":"Equipo","direccion":"-","telefono":"300","email":"demo@correo.com",
+                 "username":"demo","password":"otraClave123"}""");
+
+        String json = ok(post("/integrador/login"), null, "{\"username\":\"demo\",\"password\":\"demo123\"}");
+        assertEquals("ADMIN", JsonPath.read(json, "$.responseObj.role"));
+    }
+
+    @Test
     @Order(32)
     void propietarioInactivoNoPuedeIniciarSesion() throws Exception {
         ok(patch("/integrador/clients/" + clienteId + "/status"), adminToken, "{\"activo\":false}");

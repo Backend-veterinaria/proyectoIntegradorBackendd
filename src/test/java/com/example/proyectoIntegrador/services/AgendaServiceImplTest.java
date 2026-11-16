@@ -278,6 +278,21 @@ class AgendaServiceImplTest {
     }
 
     @Test
+    void falloAlNotificarNoConvierteEnErrorUnaCitaGuardada() {
+        when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
+        when(proyectoRepository.isUserActive(5)).thenReturn(true);
+        when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
+        when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(true);
+        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null)).thenReturn(true);
+        when(agendaCitaRepository.findEstadoId(AppointmentStatus.PROGRAMADA)).thenReturn(Optional.of(1));
+        when(agendaCitaRepository.insertAgendaCita(any(), any(), any(), any(), any(), any(), any())).thenReturn(Optional.of(500));
+        org.mockito.Mockito.doThrow(new IllegalStateException("ResponseBodyEmitter has already completed"))
+                .when(notificationService).notifyAppointmentCreation(any(), any());
+
+        assertEquals(true, service.scheduleAnAppointment(nuevaCita()));
+    }
+
+    @Test
     void agendarConMascotaDeOtroClienteFalla() {
         when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
         when(proyectoRepository.isUserActive(5)).thenReturn(true);

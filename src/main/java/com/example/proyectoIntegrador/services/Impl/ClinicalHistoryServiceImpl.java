@@ -213,6 +213,11 @@ public class ClinicalHistoryServiceImpl implements ClinicalHistoryService {
         if (proxima != null && !proxima.isAfter(aplicacion)) {
             throw new BusinessException("La proxima dosis debe ser posterior a la fecha de aplicacion");
         }
+        // La misma vacuna no se aplica dos veces a la misma mascota el mismo día: es un registro
+        // repetido (por ejemplo, doble clic en Guardar). Se compara el nombre sin importar mayúsculas.
+        if (treatmentVaccineRepository.existsVaccine(dto.getMascotaId(), trimToNull(dto.getNombre()), aplicacion)) {
+            throw new BusinessException("Esa vacuna ya esta registrada para la mascota en esa fecha");
+        }
 
         int id = treatmentVaccineRepository.insertVaccine(dto.getMascotaId(), dto.getAtencionId(), medicoId,
                 trimToNull(dto.getNombre()), trimToNull(dto.getLote()), aplicacion, proxima,

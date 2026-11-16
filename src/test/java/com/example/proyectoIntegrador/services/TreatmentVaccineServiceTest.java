@@ -213,6 +213,18 @@ class TreatmentVaccineServiceTest {
     }
 
     @Test
+    void vacunaRepetidaElMismoDiaFalla() {
+        givenVetAndPet(true);
+        LocalDate hoy = LocalDate.now();
+        when(repo.existsVaccine(7, "Rabia", hoy)).thenReturn(true);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> service.registerVaccine(VETERINARIO, vaccine(hoy, null)));
+        assertEquals("Esa vacuna ya esta registrada para la mascota en esa fecha", e.getMessage());
+        verify(repo, never()).insertVaccine(anyInt(), any(), anyInt(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void vacunaConFechaFuturaFalla() {
         givenVetAndPet(true);
 

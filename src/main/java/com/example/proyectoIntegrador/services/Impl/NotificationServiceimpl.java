@@ -45,27 +45,26 @@ public class NotificationServiceimpl implements NotificationService {
 
     @Override
     public void notifyAppointmentCreation(String client_id, DetailAppointment dataAppointmentDTO) {
-        SseEmitter emitter = clientes.get(client_id);
+        notify(client_id, "cita-creada", dataAppointmentDTO);
+    }
+
+    @Override
+    public void notify(String clientId, String event, Object data) {
+        SseEmitter emitter = clientes.get(clientId);
 
         if (emitter == null) {
             return;
         }
 
         try {
-            emitter.send(
-                    SseEmitter.event()
-                            .name("cita-creada")
-                            .data(dataAppointmentDTO)
-            );
+            emitter.send(SseEmitter.event().name(event).data(data));
         } catch (IOException e) {
-            clientes.remove(client_id, emitter);
+            clientes.remove(clientId, emitter);
             emitter.completeWithError(e);
         } catch (IllegalStateException e) {
             // La conexión ya se había cerrado (el cliente se desconectó y aún no se quitó del mapa).
-            // La notificación es opcional: no debe hacer fallar el agendamiento, que ya se guardó.
-            clientes.remove(client_id, emitter);
+            // La notificación es opcional: no debe hacer fallar la operación que la originó.
+            clientes.remove(clientId, emitter);
         }
     }
-
-
 }

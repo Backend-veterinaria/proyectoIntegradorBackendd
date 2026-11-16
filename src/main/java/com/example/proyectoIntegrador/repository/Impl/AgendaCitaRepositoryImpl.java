@@ -45,7 +45,7 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
             // Las columnas van con alias de tabla: personal y mascota también tienen cliente_id.
             String sql = """
                     SELECT ac.agenda_id, c.descripcion, c.fecha, c.hora, ec.descripcion AS estado_cita, ac.estado_id,
-                           ac.mascota_id, ma.nombre AS mascota_nombre, ac.medico_id,
+                           ac.mascota_id, ma.nombre AS mascota_nombre, ac.medico_id, ac.motivo_cancelacion,
                            p.nombre AS nombre_vete, p.apellido AS apellido_vete
                     FROM agenda_cita ac
                     LEFT JOIN cita c ON c.cita_id = ac.cita_id
@@ -212,6 +212,17 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
     }
 
     @Override
+    public int cancel(int agendaId, int currentEstadoId, int canceladaEstadoId, String motivo) {
+        log.debug("start cancel agenda={}", agendaId);
+
+        String sql = """
+                UPDATE agenda_cita SET estado_id = ?, motivo_cancelacion = ? WHERE agenda_id = ? AND estado_id = ?
+                """;
+
+        return jdbcTemplate.update(sql, canceladaEstadoId, motivo, agendaId, currentEstadoId);
+    }
+
+    @Override
     public boolean isMascotaOfClient(int mascotaId, int clienteId) {
         String sql = """
                 SELECT EXISTS (
@@ -291,7 +302,8 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
     private static final String SELECT_AGENDA_ITEM = """
             SELECT ac.agenda_id, ac.medico_id, c.fecha, c.hora, c.descripcion, ac.estado_id, ec.descripcion AS estado,
                    cl.cliente_id, cl.nombre AS cliente_nombre, cl.apellido AS cliente_apellido,
-                   cl.telefono AS cliente_telefono, m.mascota_id, m.nombre AS mascota_nombre
+                   cl.telefono AS cliente_telefono, m.mascota_id, m.nombre AS mascota_nombre,
+                   ac.motivo_cancelacion
             FROM agenda_cita ac
             JOIN cita c ON c.cita_id = ac.cita_id
             LEFT JOIN estado_cita ec ON ec.estado_id = ac.estado_id
@@ -313,6 +325,7 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
         item.setClienteTelefono(rs.getString("cliente_telefono"));
         item.setMascotaId(rs.getObject("mascota_id", Integer.class));
         item.setMascotaNombre(rs.getString("mascota_nombre"));
+        item.setMotivoCancelacion(rs.getString("motivo_cancelacion"));
         return item;
     };
 
@@ -327,6 +340,7 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
         data.setMascotaId(rs.getInt("mascota_id"));
         data.setMascotaNombre(rs.getString("mascota_nombre"));
         data.setMedicoId(rs.getObject("medico_id", Integer.class));
+        data.setMotivoCancelacion(rs.getString("motivo_cancelacion"));
         // Antes era nombre + " " + apellido y sin veterinario salía "null null"
         data.setNombreVeterinario(joinName(rs.getString("nombre_vete"), rs.getString("apellido_vete")));
     }
@@ -346,7 +360,7 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
             // PostgreSQL rechaza la consulta por columna ambigua
             String sql = """
                     SELECT ac.agenda_id, c.descripcion, c.fecha, c.hora, ec.descripcion AS estado_cita, ac.estado_id,
-                           ac.mascota_id, ma.nombre AS mascota_nombre, ac.medico_id,
+                           ac.mascota_id, ma.nombre AS mascota_nombre, ac.medico_id, ac.motivo_cancelacion,
                            p.nombre AS nombre_vete, p.apellido AS apellido_vete
                     FROM agenda_cita ac
                     LEFT JOIN cita c ON c.cita_id = ac.cita_id

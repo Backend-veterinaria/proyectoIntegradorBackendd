@@ -183,4 +183,16 @@ public class VeterinarianRepositoryImpl implements VeterinarianRepository {
 
         return jdbcTemplate.queryForList(sql, Integer.class, clienteId).stream().findFirst();
     }
+
+    @Override
+    public Optional<Integer> findClienteIdByMedicoId(int medicoId) {
+        String sql = """
+                SELECT p.cliente_id
+                FROM medico m
+                JOIN personal p ON p.personal_id = m.identificacion_medico
+                WHERE m.medico_id = ? AND p.cliente_id IS NOT NULL
+                """;
+
+        return jdbcTemplate.queryForList(sql, Integer.class, medicoId).stream().findFirst();
+    }
 }

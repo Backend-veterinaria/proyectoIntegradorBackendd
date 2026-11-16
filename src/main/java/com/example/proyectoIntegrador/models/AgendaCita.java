@@ -18,4 +18,6 @@ public class AgendaCita {
     private String estado;
     private String descripcion;
     private int estadoCitaId;
+    /** Motivo de cancelación (CIT-07), o null. */
+    private String motivoCancelacion;
 }

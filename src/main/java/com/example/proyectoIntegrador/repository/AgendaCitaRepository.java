@@ -51,6 +51,14 @@ public interface AgendaCitaRepository {
      */
     int updateEstado(int agendaId, int currentEstadoId, int newEstadoId);
 
+    /**
+     * Cancela la cita y guarda el motivo (CIT-07), solo si sigue en el estado esperado. No captura excepciones.
+     *
+     * @param motivo opcional, puede ser null
+     * @return filas actualizadas: 0 si la cita ya no estaba en currentEstadoId
+     */
+    int cancel(int agendaId, int currentEstadoId, int canceladaEstadoId, String motivo);
+
     Optional<InfoMascota> getInfoMascota(int idClient, int mascotaId);
 
     /**

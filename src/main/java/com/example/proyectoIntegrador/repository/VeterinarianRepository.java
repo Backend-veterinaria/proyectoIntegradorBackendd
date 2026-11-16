@@ -76,4 +76,11 @@ public interface VeterinarianRepository {
      * @return el medico_id, o vacío si el usuario no está vinculado a un veterinario
      */
     Optional<Integer> findMedicoIdByClienteId(int clienteId);
+
+    /**
+     * Usuario (cliente_id) con el que inicia sesión el veterinario, para enviarle avisos (CIT-07).
+     *
+     * @return vacío si el veterinario no tiene usuario
+     */
+    Optional<Integer> findClienteIdByMedicoId(int medicoId);
 }

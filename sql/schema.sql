@@ -965,3 +965,6 @@ ALTER TABLE ONLY public.vacuna
 
 -- CIT-06 (sql/CIT-06_alta_propietarios.sql)
 ALTER TABLE public.cliente ADD COLUMN IF NOT EXISTS cambiar_password boolean DEFAULT false NOT NULL;
+
+-- CIT-07 (sql/CIT-07_motivo_cancelacion.sql)
+ALTER TABLE public.agenda_cita ADD COLUMN IF NOT EXISTS motivo_cancelacion character varying(500);

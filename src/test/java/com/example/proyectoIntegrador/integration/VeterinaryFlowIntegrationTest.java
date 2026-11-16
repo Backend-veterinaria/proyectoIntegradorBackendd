@@ -246,7 +246,12 @@ class VeterinaryFlowIntegrationTest {
                 WHERE ac.cliente_id = ? AND c.hora = '15:00:00'""", Integer.class, clienteId);
 
         ok(patch("/integrador/agendaCita/cancelledAppointment"), clienteToken,
-                "{\"idCliente\":" + clienteId + ",\"idAppointment\":" + otra + "}");
+                "{\"idCliente\":" + clienteId + ",\"idAppointment\":" + otra + ",\"motivo\":\"Viaje\"}");
+
+        // El motivo se guarda y se ve en la lista de citas (CIT-07)
+        String lista = ok(get("/integrador/agendaCita/list").param("idClient", String.valueOf(clienteId)), clienteToken, null);
+        List<String> motivos = JsonPath.read(lista, "$.responseObj[?(@.agendaCitaId == " + otra + ")].motivoCancelacion");
+        assertEquals(List.of("Viaje"), motivos);
 
         int estado = jdbcTemplate.queryForObject("SELECT estado_id FROM agenda_cita WHERE agenda_id = ?", Integer.class, otra);
         assertEquals(estadoId("Cancelada"), estado);

@@ -140,10 +140,13 @@ public class AgendaServiceImpl implements AgendaService {
         }
 
         int cancelada = estadoId(AppointmentStatus.CANCELADA);
-        if (agendaCitaRepository.updateEstado(cita.getAgendaId(), cita.getEstadoId(), cancelada) == 0) {
+        String motivo = dataCancelledAppointmentDTO.getMotivo() == null || dataCancelledAppointmentDTO.getMotivo().isBlank()
+                ? null : dataCancelledAppointmentDTO.getMotivo().trim();
+        if (agendaCitaRepository.cancel(cita.getAgendaId(), cita.getEstadoId(), cancelada, motivo) == 0) {
             throw new BusinessException("La cita cambio de estado mientras se actualizaba. Consultela de nuevo");
         }
 
+        notifyChange(cita.getAgendaId(), "cita-cancelada");
         return true;
     }
 
@@ -184,8 +187,55 @@ public class AgendaServiceImpl implements AgendaService {
         }
 
         log.info("Cita {} reprogramada a {} {} con el medico {} por el usuario {}", agendaId, fecha, hora, medicoId, user.userId());
-        return agendaCitaRepository.findAgendaItem(agendaId)
+        VeterinarianAgendaItem actualizada = agendaCitaRepository.findAgendaItem(agendaId)
                 .orElseThrow(() -> new RuntimeException("No se encontro la cita recien reprogramada"));
+        notifyChange(actualizada, "cita-reprogramada");
+        // Si cambió de veterinario, el anterior también debe saber que la cita ya no es suya
+        if (cita.getMedicoId() != null && cita.getMedicoId() != medicoId) {
+            notifyVeterinarian(cita.getMedicoId(), "cita-reprogramada", event(actualizada));
+        }
+        return actualizada;
+    }
+
+    /**
+     * Avisa en tiempo real (CIT-07) al dueño de la cita y a su veterinario. Se llama cuando el cambio ya
+     * se guardó, así que ningún fallo al avisar se propaga: la operación respondería con error aunque
+     * se hubiera hecho.
+     */
+    private void notifyChange(int agendaId, String eventName) {
+        try {
+            agendaCitaRepository.findAgendaItem(agendaId).ifPresent(item -> notifyChange(item, eventName));
+        } catch (RuntimeException e) {
+            log.warn("La cita {} se actualizo, pero no se pudo enviar el aviso {}", agendaId, eventName, e);
+        }
+    }
+
+    private void notifyChange(VeterinarianAgendaItem item, String eventName) {
+        try {
+            AppointmentEvent data = event(item);
+            if (item.getClienteId() != null) {
+                notificationService.notify(String.valueOf(item.getClienteId()), eventName, data);
+            }
+            if (item.getMedicoId() != null) {
+                notifyVeterinarian(item.getMedicoId(), eventName, data);
+            }
+        } catch (RuntimeException e) {
+            log.warn("La cita {} se actualizo, pero no se pudo enviar el aviso {}", item.getAgendaId(), eventName, e);
+        }
+    }
+
+    private void notifyVeterinarian(int medicoId, String eventName, AppointmentEvent data) {
+        try {
+            veterinarianRepository.findClienteIdByMedicoId(medicoId)
+                    .ifPresent(vetUserId -> notificationService.notify(String.valueOf(vetUserId), eventName, data));
+        } catch (RuntimeException e) {
+            log.warn("No se pudo avisar al veterinario {}", medicoId, e);
+        }
+    }
+
+    private AppointmentEvent event(VeterinarianAgendaItem item) {
+        return new AppointmentEvent(item.getAgendaId(), item.getDescripcion(), item.getFecha(), item.getHora(),
+                item.getEstado(), item.getMascotaNombre(), item.getMotivoCancelacion());
     }
 
     /**

@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -366,11 +367,44 @@ class AgendaServiceImplTest {
         when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(citaDe(5, 11, 2, "Confirmada")));
         when(agendaCitaRepository.findEstadoId(AppointmentStatus.CANCELADA)).thenReturn(Optional.of(7));
-        when(agendaCitaRepository.updateEstado(100, 2, 7)).thenReturn(1);
+        when(agendaCitaRepository.cancel(100, 2, 7, null)).thenReturn(1);
 
         service.cancelledAppointment(cancelar(5, 100));
 
-        verify(agendaCitaRepository).updateEstado(100, 2, 7);
+        verify(agendaCitaRepository).cancel(100, 2, 7, null);
+    }
+
+    @Test
+    void cancelarGuardaElMotivoYAvisaAlClienteYAlVeterinario() {
+        VeterinarianAgendaItem cancelada = citaDe(5, 11, 7, "Cancelada");
+        cancelada.setMotivoCancelacion("La mascota ya se recupero");
+        when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
+        when(agendaCitaRepository.findAgendaItem(100))
+                .thenReturn(Optional.of(citaDe(5, 11, 2, "Confirmada")), Optional.of(cancelada));
+        when(agendaCitaRepository.findEstadoId(AppointmentStatus.CANCELADA)).thenReturn(Optional.of(7));
+        when(agendaCitaRepository.cancel(100, 2, 7, "La mascota ya se recupero")).thenReturn(1);
+        when(veterinarianRepository.findClienteIdByMedicoId(11)).thenReturn(Optional.of(40));
+
+        DataCancelledAppointmentDTO dto = cancelar(5, 100);
+        dto.setMotivo("  La mascota ya se recupero ");
+        service.cancelledAppointment(dto);
+
+        org.mockito.ArgumentCaptor<Object> data = org.mockito.ArgumentCaptor.forClass(Object.class);
+        verify(notificationService).notify(eq("5"), eq("cita-cancelada"), data.capture());
+        verify(notificationService).notify(eq("40"), eq("cita-cancelada"), any());
+        assertEquals("La mascota ya se recupero", ((com.example.proyectoIntegrador.models.AppointmentEvent) data.getValue()).motivo());
+    }
+
+    @Test
+    void falloAlAvisarNoConvierteEnErrorUnaCancelacionGuardada() {
+        when(agendaCitaRepository.validateClient(5)).thenReturn(Optional.of(true));
+        when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(citaDe(5, 11, 2, "Confirmada")));
+        when(agendaCitaRepository.findEstadoId(AppointmentStatus.CANCELADA)).thenReturn(Optional.of(7));
+        when(agendaCitaRepository.cancel(100, 2, 7, null)).thenReturn(1);
+        org.mockito.Mockito.doThrow(new IllegalStateException("conexion cerrada"))
+                .when(notificationService).notify(any(), any(), any());
+
+        assertEquals(true, service.cancelledAppointment(cancelar(5, 100)));
     }
 
     @Test
@@ -406,6 +440,7 @@ class AgendaServiceImplTest {
         assertEquals("Reprogramada", result.getEstado());
         // Se excluye la propia cita al revisar disponibilidad y se conserva el veterinario
         verify(agendaCitaRepository).reschedule(100, 1, FUTURE, TEN, 11, 4);
+        verify(notificationService).notify(eq("5"), eq("cita-reprogramada"), any());
     }
 
     @Test

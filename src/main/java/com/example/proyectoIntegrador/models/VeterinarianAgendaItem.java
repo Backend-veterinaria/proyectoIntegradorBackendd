@@ -20,4 +20,6 @@ public class VeterinarianAgendaItem {
     private String clienteTelefono;
     private Integer mascotaId;
     private String mascotaNombre;
+    /** Motivo de cancelación (CIT-07), o null. */
+    private String motivoCancelacion;
 }

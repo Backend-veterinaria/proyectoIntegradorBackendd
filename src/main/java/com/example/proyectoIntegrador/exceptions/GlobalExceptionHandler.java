@@ -10,15 +10,25 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.validation.BindException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
 
 /**
- * Convierte los errores de validación de entrada (que ocurren antes de entrar al controlador)
- * en la misma estructura ResponseGeneric que usan todos los servicios, con HTTP 200 y
- * el código ERROR_VALIDATION, para que el cliente los maneje igual que los demás errores.
+ * Manejo centralizado de errores (QA-01, RNF-05). Todas las respuestas usan la estructura
+ * ResponseGeneric:
+ * <ul>
+ *   <li>Datos de entrada inválidos (validación, JSON mal formado, tipo de parámetro, parámetro
+ *       faltante): HTTP 200, código 6617 y la lista de campos con error.</li>
+ *   <li>Sin permiso: HTTP 403, código 6619. Sin token o vencido: HTTP 401, código 6618
+ *       (lo escribe SecurityConfig, porque ocurre antes de llegar a Spring MVC).</li>
+ *   <li>Cualquier otro error no capturado: código 6620 y un mensaje genérico; el detalle solo
+ *       queda en el log del servidor.</li>
+ * </ul>
+ * Los errores de negocio los capturan los propios controladores (ErrorMessages.clientMessage).
  */
 @Slf4j
 @RestControllerAdvice
@@ -43,6 +53,25 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ResponseGeneric> handleUnreadable(HttpMessageNotReadableException e) {
         log.debug("Cuerpo de la peticion no legible: {}", e.getMessage());
         return ResponseEntity.ok(buildError(List.of("El cuerpo de la peticion no es un JSON valido")));
+    }
+
+    /**
+     * Parámetro de la ruta o de la URL con un tipo que no corresponde (por ejemplo /pets/abc o
+     * ?days=diez). Es un error del cliente, no del servidor: no debe llegar al catch-all como 500.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ResponseGeneric> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.debug("Parametro con tipo invalido: {}={}", e.getName(), e.getValue());
+        return ResponseEntity.ok(buildError(List.of(e.getName() + ": invalid value")));
+    }
+
+    /**
+     * Falta un parámetro obligatorio de la URL (@RequestParam sin valor por defecto).
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ResponseGeneric> handleMissingParameter(MissingServletRequestParameterException e) {
+        log.debug("Falta el parametro {}", e.getParameterName());
+        return ResponseEntity.ok(buildError(List.of(e.getParameterName() + ": required parameter")));
     }
 
     /**

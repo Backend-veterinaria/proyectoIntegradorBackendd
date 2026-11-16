@@ -3,6 +3,7 @@ package com.example.proyectoIntegrador.repository;
 import com.example.proyectoIntegrador.models.ClinicalAttention;
 import com.example.proyectoIntegrador.models.ClinicalAttentionCreateDTO;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -21,6 +22,11 @@ public interface ClinicalHistoryRepository {
      * @return el atencion_id generado
      */
     int insert(ClinicalAttentionCreateDTO dto, int mascotaId, int medicoId);
+
+    /**
+     * Atenciones de una mascota, de la más reciente a la más antigua (HC-03). No captura excepciones.
+     */
+    List<ClinicalAttention> findByMascotaId(int mascotaId);
 
     /**
      * @return la atención con el nombre de la mascota y del veterinario, o vacío si no existe

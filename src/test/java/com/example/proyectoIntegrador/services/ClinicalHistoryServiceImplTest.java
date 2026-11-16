@@ -4,9 +4,12 @@ import com.example.proyectoIntegrador.enums.AppointmentStatus;
 import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.models.ClinicalAttention;
 import com.example.proyectoIntegrador.models.ClinicalAttentionCreateDTO;
+import com.example.proyectoIntegrador.models.ClinicalHistory;
+import com.example.proyectoIntegrador.models.InfoMascota;
 import com.example.proyectoIntegrador.models.VeterinarianAgendaItem;
 import com.example.proyectoIntegrador.repository.AgendaCitaRepository;
 import com.example.proyectoIntegrador.repository.ClinicalHistoryRepository;
+import com.example.proyectoIntegrador.repository.PetsRepository;
 import com.example.proyectoIntegrador.repository.VeterinarianRepository;
 import com.example.proyectoIntegrador.security.AuthenticatedUser;
 import com.example.proyectoIntegrador.security.Role;
@@ -21,6 +24,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,12 +50,14 @@ class ClinicalHistoryServiceImplTest {
     private AgendaCitaRepository agendaCitaRepository;
     @Mock
     private VeterinarianRepository veterinarianRepository;
+    @Mock
+    private PetsRepository petsRepository;
 
     private ClinicalHistoryServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ClinicalHistoryServiceImpl(clinicalHistoryRepository, agendaCitaRepository, veterinarianRepository);
+        service = new ClinicalHistoryServiceImpl(clinicalHistoryRepository, agendaCitaRepository, veterinarianRepository, petsRepository);
     }
 
     private static VeterinarianAgendaItem cita(String estado, int estadoId, int medicoId, LocalDate fecha) {
@@ -83,6 +89,7 @@ class ClinicalHistoryServiceImplTest {
         ClinicalAttention a = new ClinicalAttention();
         a.setAtencionId(500);
         a.setAgendaId(100);
+        a.setClienteId(5);
         return a;
     }
 
@@ -212,9 +219,61 @@ class ClinicalHistoryServiceImplTest {
     }
 
     @Test
-    void clienteNoConsultaAtencion() {
+    void duenoConsultaAtencionDeSuMascota() {
+        when(clinicalHistoryRepository.findById(500)).thenReturn(Optional.of(saved()));
+
+        assertEquals(500, service.getAttention(CLIENTE, 500).getAtencionId());
+    }
+
+    @Test
+    void clienteNoConsultaAtencionDeMascotaAjena() {
+        ClinicalAttention ajena = saved();
+        ajena.setClienteId(6);
+        when(clinicalHistoryRepository.findById(500)).thenReturn(Optional.of(ajena));
+
         assertThrows(AccessDeniedException.class, () -> service.getAttention(CLIENTE, 500));
-        verify(clinicalHistoryRepository, never()).findById(anyInt());
+    }
+
+    private static InfoMascota mascota(int clienteId) {
+        InfoMascota m = new InfoMascota();
+        m.setIdMascota(7);
+        m.setClienteId(clienteId);
+        return m;
+    }
+
+    @Test
+    void duenoConsultaHistoriaDeSuMascota() {
+        when(petsRepository.findById(7)).thenReturn(Optional.of(mascota(5)));
+        when(clinicalHistoryRepository.findByMascotaId(7)).thenReturn(List.of(saved()));
+
+        ClinicalHistory history = service.getPetHistory(CLIENTE, 7);
+
+        assertEquals(7, history.getMascota().getIdMascota());
+        assertEquals(1, history.getAtenciones().size());
+    }
+
+    @Test
+    void personalConsultaHistoriaDeCualquierMascota() {
+        when(petsRepository.findById(7)).thenReturn(Optional.of(mascota(6)));
+        when(clinicalHistoryRepository.findByMascotaId(7)).thenReturn(List.of());
+
+        assertEquals(0, service.getPetHistory(VETERINARIO, 7).getAtenciones().size());
+    }
+
+    @Test
+    void clienteNoConsultaHistoriaDeMascotaAjena() {
+        when(petsRepository.findById(7)).thenReturn(Optional.of(mascota(6)));
+
+        assertThrows(AccessDeniedException.class, () -> service.getPetHistory(CLIENTE, 7));
+        verify(clinicalHistoryRepository, never()).findByMascotaId(anyInt());
+    }
+
+    @Test
+    void historiaDeMascotaInexistenteEsErrorDeNegocio() {
+        when(petsRepository.findById(7)).thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class, () -> service.getPetHistory(ADMIN, 7));
+        assertEquals("La mascota no existe", e.getMessage());
     }
 
     @Test

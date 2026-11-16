@@ -13,6 +13,8 @@ public class ClinicalAttention {
     private Integer agendaId;
     private Integer mascotaId;
     private String mascotaNombre;
+    /** Dueño de la mascota. */
+    private Integer clienteId;
     private Integer medicoId;
     private String medicoNombre;
     /** Fecha y hora en que se registró la atención (ISO, yyyy-MM-ddTHH:mm:ss). */

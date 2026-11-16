@@ -23,9 +23,15 @@ public interface ClinicalHistoryController {
     ResponseEntity<ResponseGeneric> registerAttention(@Valid @RequestBody ClinicalAttentionCreateDTO dto);
 
     /**
-     * Consulta una atención clínica. Solo personal.
+     * Consulta una atención clínica: el personal cualquiera, el dueño las de sus mascotas.
      */
     @GetMapping("/attentions/{atencionId}")
-    @PreAuthorize("hasAnyRole('VETERINARIO', 'ADMIN')")
     ResponseEntity<ResponseGeneric> getAttention(@PathVariable("atencionId") int atencionId);
+
+    /**
+     * Historia clínica de una mascota (HC-03): sus datos y sus atenciones, de la más reciente a la
+     * más antigua. El personal la de cualquier mascota, el dueño la de las suyas (solo lectura).
+     */
+    @GetMapping("/pets/{mascotaId}")
+    ResponseEntity<ResponseGeneric> getPetHistory(@PathVariable("mascotaId") int mascotaId);
 }

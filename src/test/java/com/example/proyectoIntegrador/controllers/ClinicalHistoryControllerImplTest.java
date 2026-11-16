@@ -3,6 +3,8 @@ package com.example.proyectoIntegrador.controllers;
 import com.example.proyectoIntegrador.controllers.Impl.ClinicalHistoryControllerImpl;
 import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.models.ClinicalAttention;
+import com.example.proyectoIntegrador.models.ClinicalHistory;
+import com.example.proyectoIntegrador.models.InfoMascota;
 import com.example.proyectoIntegrador.security.AuthenticatedUser;
 import com.example.proyectoIntegrador.security.JwtService;
 import com.example.proyectoIntegrador.security.Role;
@@ -17,6 +19,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.mockito.ArgumentMatchers.any;
@@ -139,12 +143,51 @@ class ClinicalHistoryControllerImplTest {
     }
 
     @Test
-    void clienteNoConsultaAtencion() throws Exception {
+    void clienteNoConsultaAtencionAjena() throws Exception {
+        when(clinicalHistoryService.getAttention(any(), anyInt()))
+                .thenThrow(new AccessDeniedException("Solo puede consultar la historia clinica de sus mascotas"));
+
         mockMvc.perform(get("/integrador/clinicalHistory/attentions/500")
                         .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.responseCode").value("6619"));
+    }
 
-        verify(clinicalHistoryService, never()).getAttention(any(), anyInt());
+    @Test
+    void duenoConsultaHistoriaDeSuMascota() throws Exception {
+        InfoMascota mascota = new InfoMascota();
+        mascota.setIdMascota(7);
+        when(clinicalHistoryService.getPetHistory(any(), eq(7)))
+                .thenReturn(new ClinicalHistory(mascota, List.of(saved())));
+
+        mockMvc.perform(get("/integrador/clinicalHistory/pets/7")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseObj.mascota.idMascota").value(7))
+                .andExpect(jsonPath("$.responseObj.atenciones[0].atencionId").value(500));
+
+        verify(clinicalHistoryService).getPetHistory(new AuthenticatedUser(5, "usuario", Role.CLIENTE), 7);
+    }
+
+    @Test
+    void historiaDeMascotaAjenaDevuelve403() throws Exception {
+        when(clinicalHistoryService.getPetHistory(any(), anyInt()))
+                .thenThrow(new AccessDeniedException("Solo puede consultar la historia clinica de sus mascotas"));
+
+        mockMvc.perform(get("/integrador/clinicalHistory/pets/8")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void historiaDeMascotaInexistenteEsError() throws Exception {
+        when(clinicalHistoryService.getPetHistory(any(), anyInt())).thenThrow(new BusinessException("La mascota no existe"));
+
+        mockMvc.perform(get("/integrador/clinicalHistory/pets/99")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, Role.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("6615"))
+                .andExpect(jsonPath("$.responseObj").value("La mascota no existe"));
     }
 
     @Test

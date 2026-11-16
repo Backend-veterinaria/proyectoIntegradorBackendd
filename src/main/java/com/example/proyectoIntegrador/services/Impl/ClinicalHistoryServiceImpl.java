@@ -4,12 +4,16 @@ import com.example.proyectoIntegrador.enums.AppointmentStatus;
 import com.example.proyectoIntegrador.exceptions.BusinessException;
 import com.example.proyectoIntegrador.models.ClinicalAttention;
 import com.example.proyectoIntegrador.models.ClinicalAttentionCreateDTO;
+import com.example.proyectoIntegrador.models.ClinicalHistory;
+import com.example.proyectoIntegrador.models.InfoMascota;
 import com.example.proyectoIntegrador.models.VeterinarianAgendaItem;
 import com.example.proyectoIntegrador.repository.AgendaCitaRepository;
 import com.example.proyectoIntegrador.repository.ClinicalHistoryRepository;
+import com.example.proyectoIntegrador.repository.PetsRepository;
 import com.example.proyectoIntegrador.repository.VeterinarianRepository;
 import com.example.proyectoIntegrador.security.AuthenticatedUser;
 import com.example.proyectoIntegrador.security.Role;
+import com.example.proyectoIntegrador.security.SecurityUtils;
 import com.example.proyectoIntegrador.services.ClinicalHistoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +38,7 @@ public class ClinicalHistoryServiceImpl implements ClinicalHistoryService {
     private final ClinicalHistoryRepository clinicalHistoryRepository;
     private final AgendaCitaRepository agendaCitaRepository;
     private final VeterinarianRepository veterinarianRepository;
+    private final PetsRepository petsRepository;
 
     /**
      * Registra la atención de una cita (HC-01):
@@ -97,15 +102,33 @@ public class ClinicalHistoryServiceImpl implements ClinicalHistoryService {
     }
 
     /**
-     * Consulta una atención. Por la reserva de la historia clínica, solo el personal.
+     * Consulta una atención: el personal cualquiera, el dueño solo las de sus mascotas.
+     * La reserva de la historia clínica es frente a terceros, no frente al propietario del animal.
      */
     @Override
     public ClinicalAttention getAttention(AuthenticatedUser user, int atencionId) {
-        if (!user.role().isStaff()) {
-            throw new AccessDeniedException("Solo el personal puede consultar la atencion clinica");
-        }
-        return clinicalHistoryRepository.findById(atencionId)
+        ClinicalAttention atencion = clinicalHistoryRepository.findById(atencionId)
                 .orElseThrow(() -> new BusinessException("La atencion no existe"));
+        if (!SecurityUtils.canAccessClient(user, atencion.getClienteId())) {
+            throw new AccessDeniedException("Solo puede consultar la historia clinica de sus mascotas");
+        }
+        return atencion;
+    }
+
+    /**
+     * Historia clínica de una mascota (HC-03), incluidas las mascotas inactivas: la historia se conserva.
+     */
+    @Override
+    public ClinicalHistory getPetHistory(AuthenticatedUser user, int mascotaId) {
+        log.debug("start getPetHistory mascota={}", mascotaId);
+
+        InfoMascota mascota = petsRepository.findById(mascotaId)
+                .orElseThrow(() -> new BusinessException("La mascota no existe"));
+        if (!SecurityUtils.canAccessClient(user, mascota.getClienteId())) {
+            throw new AccessDeniedException("Solo puede consultar la historia clinica de sus mascotas");
+        }
+
+        return new ClinicalHistory(mascota, clinicalHistoryRepository.findByMascotaId(mascotaId));
     }
 
     /** c.fecha es DATE: JDBC la devuelve como yyyy-MM-dd. */

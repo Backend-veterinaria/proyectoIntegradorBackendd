@@ -36,6 +36,13 @@ public class ClinicalHistoryControllerImpl implements ClinicalHistoryController 
                 () -> clinicalHistoryService.getAttention(SecurityUtils.currentUser(), atencionId));
     }
 
+    @Override
+    public ResponseEntity<ResponseGeneric> getPetHistory(int mascotaId) {
+        log.debug("START getPetHistory {}", mascotaId);
+        return handle(CodesResponse.ERROR_GET_DATA,
+                () -> clinicalHistoryService.getPetHistory(SecurityUtils.currentUser(), mascotaId));
+    }
+
     private ResponseEntity<ResponseGeneric> handle(CodesResponse errorCode, Supplier<Object> action) {
         try {
             ResponseGeneric response = new ResponseGeneric();

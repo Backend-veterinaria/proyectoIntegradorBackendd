@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -20,7 +21,7 @@ public class ClinicalHistoryRepositoryImpl implements ClinicalHistoryRepository 
     private final JdbcTemplate jdbcTemplate;
 
     private static final String SELECT_ATTENTION = """
-            SELECT a.atencion_id, a.agenda_id, a.mascota_id, m.nombre AS mascota_nombre, a.medico_id,
+            SELECT a.atencion_id, a.agenda_id, a.mascota_id, m.nombre AS mascota_nombre, m.cliente_id, a.medico_id,
                    p.nombre AS medico_nombre, p.apellido AS medico_apellido, a.fecha_atencion,
                    a.motivo_consulta, a.diagnostico, a.procedimientos, a.observaciones, a.peso_kg, a.temperatura_c
             FROM atencion_clinica a
@@ -35,6 +36,7 @@ public class ClinicalHistoryRepositoryImpl implements ClinicalHistoryRepository 
         a.setAgendaId(rs.getInt("agenda_id"));
         a.setMascotaId(rs.getInt("mascota_id"));
         a.setMascotaNombre(rs.getString("mascota_nombre"));
+        a.setClienteId(rs.getObject("cliente_id", Integer.class));
         a.setMedicoId(rs.getInt("medico_id"));
         String nombre = rs.getString("medico_nombre");
         String apellido = rs.getString("medico_apellido");
@@ -77,6 +79,13 @@ public class ClinicalHistoryRepositoryImpl implements ClinicalHistoryRepository 
             throw new IllegalStateException("La base de datos no devolvio el atencion_id");
         }
         return id;
+    }
+
+    @Override
+    public List<ClinicalAttention> findByMascotaId(int mascotaId) {
+        String sql = SELECT_ATTENTION + " WHERE a.mascota_id = ? ORDER BY a.fecha_atencion DESC, a.atencion_id DESC";
+
+        return jdbcTemplate.query(sql, ATTENTION_MAPPER, mascotaId);
     }
 
     @Override

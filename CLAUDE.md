@@ -51,6 +51,10 @@ Scheduling: the SSE notification runs after the appointment is saved and is wrap
 - `sql/schema.sql` is a `pg_dump --schema-only` of the dev DB. When you add a schema-change script to `sql/`, regenerate it (or append the same DDL), otherwise the integration test runs against a stale schema.
 - JaCoCo (QA-02): `verify` writes `target/site/jacoco/index.html` and fails if line coverage of `services.Impl` drops below 70 %.
 
+## Production profile
+
+`src/main/resources/application-prod.properties` is activated with `SPRING_PROFILES_ACTIVE=prod` and only overrides what changes. Secrets have **no defaults** there (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS` are required, so startup fails fast if one is missing); Swagger is off, the demo login is off (`app.demo-login.enabled=false`, read by `ProyectoServiceImpl`), error details are never sent and debug logging is off. `config/ProductionProfileTest` boots the app with this profile. When adding a new secret or a dev-only feature, add its production value here too.
+
 ## Database
 
 PostgreSQL, configured in `src/main/resources/application.properties` through env vars `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (defaults: `jdbc:postgresql://localhost:5432/VETERINARIAPP` and the local dev credentials). Each developer overrides them instead of editing the file. There is no full schema file and no JPA entities. Schema *changes* go in `sql/` (not `db/`, which is gitignored for local DB data) as hand-run SQL scripts named after the Jira issue (e.g. `sql/VET-01_gestion_veterinarios.sql`, which adds `personal.activo` and `personal.cliente_id`); code that depends on them requires the script to have been run. The ER diagram is Figura 2 of the thesis document. The rest of the schema (tables such as `cliente`, `cita`, `agenda_cita`, `estado_cita`, mascota/veterinario tables) lives only in the external database, and table/column names are known only from the SQL strings in the repository classes.

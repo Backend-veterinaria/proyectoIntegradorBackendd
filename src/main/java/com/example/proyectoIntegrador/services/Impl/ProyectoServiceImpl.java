@@ -12,6 +12,7 @@ import com.example.proyectoIntegrador.security.Role;
 import com.example.proyectoIntegrador.services.ProyectoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,11 +59,16 @@ public class ProyectoServiceImpl implements ProyectoService {
     // con el cliente 1 (por ejemplo, no podía inactivarlo por ser "su propia cuenta").
     private static final String DEMO_USER_ID = "0";
 
+    // Se apaga en producción con app.demo-login.enabled=false (application-prod.properties). Por
+    // defecto está encendido para no cambiar nada en desarrollo ni en las pruebas.
+    @Value("${app.demo-login.enabled:true}")
+    private boolean demoLoginEnabled = true;
+
     @Override
     public InfoUser loginService(LoginDTO loginDTO) {
 
         // TODO: ELIMINAR antes de cualquier despliegue (acceso de demostración).
-        if (DEMO_USERNAME.equals(loginDTO.getUsername()) && DEMO_PASSWORD.equals(loginDTO.getPassword())) {
+        if (demoLoginEnabled && DEMO_USERNAME.equals(loginDTO.getUsername()) && DEMO_PASSWORD.equals(loginDTO.getPassword())) {
             log.warn("Login con usuario de demostración quemado");
             InfoUser demo = proyectoRepository.validateUser(DEMO_USERNAME).orElseGet(() -> {
                 InfoUser nuevo = new InfoUser();

@@ -9,6 +9,5 @@ public class AgendaCitaDetail extends AgendaCita {
 
     private InfoUser infoUser;
     private InfoMascota infoMascota;
-    private String nombreVeterinario;
 
 }

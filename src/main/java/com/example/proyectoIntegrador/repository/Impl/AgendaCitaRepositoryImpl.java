@@ -39,23 +39,25 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
 
         try {
             // Construye la consulta SQL
+            // Incluye mascota y veterinario para que el frontend no tenga que pedir el detalle de cada cita.
+            // Las columnas van con alias de tabla: personal y mascota también tienen cliente_id.
             String sql = """
-                    SELECT ac.agenda_id, c.descripcion, c.fecha , c.hora, ec.descripcion as estado_cita, ac.estado_id
-                    FROM agenda_cita ac 
-                    left join cita c on c.cita_id = ac.cita_id 
-                    left join estado_cita ec on ec.estado_id  = ac.estado_id 
-                    WHERE cliente_id = ?  
-                    order by c.fecha desc, c.hora desc 
+                    SELECT ac.agenda_id, c.descripcion, c.fecha, c.hora, ec.descripcion AS estado_cita, ac.estado_id,
+                           ac.mascota_id, ma.nombre AS mascota_nombre, ac.medico_id,
+                           p.nombre AS nombre_vete, p.apellido AS apellido_vete
+                    FROM agenda_cita ac
+                    LEFT JOIN cita c ON c.cita_id = ac.cita_id
+                    LEFT JOIN estado_cita ec ON ec.estado_id = ac.estado_id
+                    LEFT JOIN mascota ma ON ma.mascota_id = ac.mascota_id
+                    LEFT JOIN medico m ON m.medico_id = ac.medico_id
+                    LEFT JOIN personal p ON p.personal_id = m.identificacion_medico
+                    WHERE ac.cliente_id = ?
+                    ORDER BY c.fecha DESC, c.hora DESC
                     """;
 
             var empresas = jdbcTemplate.query(sql, (rs, rowNum) -> {
                 AgendaCita data = new AgendaCita();
-                data.setAgendaCitaId(rs.getInt("agenda_id"));
-                data.setDescripcion(rs.getString("descripcion"));
-                data.setFechaInicio(rs.getString("fecha"));
-                data.setHoraInicio(rs.getString("hora"));
-                data.setEstado(rs.getString("estado_cita"));
-                data.setEstadoCitaId(rs.getInt("estado_id"));
+                fillAgendaCita(data, rs);
                 return data;
             }, idClient);
 
@@ -307,6 +309,21 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
         return item;
     };
 
+    /** Columnas comunes de la lista y del detalle de citas del cliente. */
+    private static void fillAgendaCita(AgendaCita data, java.sql.ResultSet rs) throws java.sql.SQLException {
+        data.setAgendaCitaId(rs.getInt("agenda_id"));
+        data.setDescripcion(rs.getString("descripcion"));
+        data.setFechaInicio(rs.getString("fecha"));
+        data.setHoraInicio(rs.getString("hora"));
+        data.setEstado(rs.getString("estado_cita"));
+        data.setEstadoCitaId(rs.getInt("estado_id"));
+        data.setMascotaId(rs.getInt("mascota_id"));
+        data.setMascotaNombre(rs.getString("mascota_nombre"));
+        data.setMedicoId(rs.getObject("medico_id", Integer.class));
+        // Antes era nombre + " " + apellido y sin veterinario salía "null null"
+        data.setNombreVeterinario(joinName(rs.getString("nombre_vete"), rs.getString("apellido_vete")));
+    }
+
     private static String joinName(String nombre, String apellido) {
         if (nombre == null) {
             return apellido;
@@ -318,25 +335,24 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
     public Optional<AgendaCitaDetail> getDetailAppointment(int idAgenda, int idClient) {
         try {
             // Construye la consulta SQL
+            // ac.cliente_id con alias: desde VET-01 personal también tiene cliente_id y sin alias
+            // PostgreSQL rechaza la consulta por columna ambigua
             String sql = """
-                    SELECT ac.agenda_id, c.descripcion, c.fecha , c.hora, ec.descripcion as estado_cita, p.nombre as nombreVete, p.apellido as apellidoVete, ac.mascota_id 
-                    FROM agenda_cita ac 
-                    left join cita c on c.cita_id = ac.cita_id 
-                    left join estado_cita ec on ec.estado_id  = ac.estado_id 
-                    left join medico m on m.medico_id = ac.medico_id 
-                    left join personal p on p.personal_id = m.identificacion_medico
-                    WHERE cliente_id = ? and ac.agenda_id = ? 
+                    SELECT ac.agenda_id, c.descripcion, c.fecha, c.hora, ec.descripcion AS estado_cita, ac.estado_id,
+                           ac.mascota_id, ma.nombre AS mascota_nombre, ac.medico_id,
+                           p.nombre AS nombre_vete, p.apellido AS apellido_vete
+                    FROM agenda_cita ac
+                    LEFT JOIN cita c ON c.cita_id = ac.cita_id
+                    LEFT JOIN estado_cita ec ON ec.estado_id = ac.estado_id
+                    LEFT JOIN mascota ma ON ma.mascota_id = ac.mascota_id
+                    LEFT JOIN medico m ON m.medico_id = ac.medico_id
+                    LEFT JOIN personal p ON p.personal_id = m.identificacion_medico
+                    WHERE ac.cliente_id = ? AND ac.agenda_id = ?
                     """;
 
             var empresas = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
                 AgendaCitaDetail data = new AgendaCitaDetail();
-                data.setAgendaCitaId(rs.getInt("agenda_id"));
-                data.setDescripcion(rs.getString("descripcion"));
-                data.setFechaInicio(rs.getString("fecha"));
-                data.setHoraInicio(rs.getString("hora"));
-                data.setEstado(rs.getString("estado_cita"));
-                data.setNombreVeterinario(rs.getString("nombreVete") + " " + rs.getString("apellidoVete"));
-                data.setMascotaId(rs.getInt("mascota_id"));
+                fillAgendaCita(data, rs);
                 return data;
             }, idClient, idAgenda);
 

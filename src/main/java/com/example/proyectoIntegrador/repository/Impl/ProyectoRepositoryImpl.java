@@ -1,11 +1,9 @@
 package com.example.proyectoIntegrador.repository.Impl;
 
 import com.example.proyectoIntegrador.models.InfoUser;
-import com.example.proyectoIntegrador.models.RegisterClient;
 import com.example.proyectoIntegrador.models.RegisterDTO;
 import com.example.proyectoIntegrador.repository.ProyectoRepository;
 import com.example.proyectoIntegrador.security.Role;
-import com.example.proyectoIntegrador.utils.ClienteRowMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -48,25 +46,6 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
             return Optional.empty();
         }
     }
-
-    @Override
-    public Optional<RegisterClient> getInfoUser(RegisterDTO registerDTO) {
-
-        log.debug("Obtener informacion del cliente");
-
-        try {
-
-            String sql = """
-                    SELECT nombre, apellido, direccion, telefono, email, fecha_registro, estado_cliente, username, rol_id FROM cliente
-                    """;
-            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, new ClienteRowMapper()));
-
-        } catch (Exception e) {
-            log.debug("No se pudo encontrar el usuario: {}", e.getMessage());
-            return Optional.empty();
-        }
-    }
-
 
     @Override
     public Optional<Integer> getRoleId(Role role) {

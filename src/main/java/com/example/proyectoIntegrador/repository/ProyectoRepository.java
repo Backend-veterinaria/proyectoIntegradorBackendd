@@ -2,7 +2,6 @@ package com.example.proyectoIntegrador.repository;
 
 
 import com.example.proyectoIntegrador.models.InfoUser;
-import com.example.proyectoIntegrador.models.RegisterClient;
 import com.example.proyectoIntegrador.models.RegisterDTO;
 import com.example.proyectoIntegrador.security.Role;
 
@@ -27,14 +26,6 @@ public interface ProyectoRepository {
      * @return un Optional con el rol_id, o vacío si no existe un rol con esa descripción
      */
     Optional<Integer> getRoleId(Role role);
-
-    /**
-     * Obtiene la información de un cliente basado en los datos proporcionados en el objeto RegisterDTO.
-     *
-     * @param registerDTO Objeto que contiene los datos del cliente a buscar.
-     * @return Un Optional que contiene un objeto RegisterClient si se encuentra el cliente, o un Optional vacío si no se encuentra.
-     */
-    Optional<RegisterClient> getInfoUser(RegisterDTO registerDTO);
 
     /**
      * Inserta un nuevo registro de sesión en la tabla 'sesiones' con el código de sesión y el ID de usuario proporcionados.

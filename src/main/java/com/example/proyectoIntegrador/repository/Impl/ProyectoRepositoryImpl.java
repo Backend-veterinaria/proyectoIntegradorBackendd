@@ -98,6 +98,28 @@ public class ProyectoRepositoryImpl implements ProyectoRepository {
                 .orElse(false);
     }
 
+    @Override
+    public boolean mustChangePassword(int clienteId) {
+        String sql = """
+                SELECT cambiar_password FROM cliente WHERE cliente_id = ?
+                """;
+
+        try {
+            return jdbcTemplate.queryForList(sql, Boolean.class, clienteId).stream()
+                    .findFirst()
+                    .map(Boolean.TRUE::equals)
+                    .orElse(false);
+        } catch (Exception e) {
+            log.warn("No se pudo consultar cliente.cambiar_password (¿se ejecutó sql/CIT-06?): {}", e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public int setMustChangePassword(int clienteId, boolean value) {
+        return jdbcTemplate.update("UPDATE cliente SET cambiar_password = ? WHERE cliente_id = ?", value, clienteId);
+    }
+
 
     @Override
     public Optional<Integer> getIdUser(String userName) {

@@ -178,6 +178,78 @@ class ClientControllerImplTest {
         verify(clientService, never()).changeStatus(any(), anyInt(), anyBoolean());
     }
 
+    private static final String NEW_OWNER = """
+            {"nombre":"Luis","apellido":"Diaz","telefono":"3001234567","email":"luis@correo.com","username":"luis.diaz"}
+            """;
+
+    @Test
+    void personalRegistraPropietario() throws Exception {
+        when(clientService.create(any(), any())).thenReturn(
+                new com.example.proyectoIntegrador.models.ClientTemporaryPassword(client(77), "Ab3dEf7hJk"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/integrador/clients")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(40, Role.VETERINARIO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(NEW_OWNER))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"))
+                .andExpect(jsonPath("$.responseObj.cliente.clienteId").value(77))
+                .andExpect(jsonPath("$.responseObj.passwordTemporal").value("Ab3dEf7hJk"));
+    }
+
+    @Test
+    void propietarioRepetidoDevuelveUserExists() throws Exception {
+        when(clientService.create(any(), any())).thenThrow(
+                new com.example.proyectoIntegrador.exceptions.UserAlreadyExistsException("Ya existe un usuario con ese username o email"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/integrador/clients")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(1, Role.ADMIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(NEW_OWNER))
+                .andExpect(jsonPath("$.responseCode").value("9994"))
+                .andExpect(jsonPath("$.responseObj").value("Ya existe un usuario con ese username o email"));
+    }
+
+    @Test
+    void clienteNoRegistraPropietarios() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/integrador/clients")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(NEW_OWNER))
+                .andExpect(status().isForbidden());
+
+        verify(clientService, never()).create(any(), any());
+    }
+
+    @Test
+    void clienteNoRestablecePasswords() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/integrador/clients/6/password/reset")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void cambiarPasswordCortaEsErrorDeValidacion() throws Exception {
+        mockMvc.perform(put("/integrador/clients/5/password")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordActual\":\"Temporal23\",\"passwordNueva\":\"corta\"}"))
+                .andExpect(jsonPath("$.responseCode").value("6617"))
+                .andExpect(jsonPath("$.responseObj", hasItem("passwordNueva: passwordNueva must have between 8 and 72 characters")));
+    }
+
+    @Test
+    void clienteCambiaSuPassword() throws Exception {
+        mockMvc.perform(put("/integrador/clients/5/password")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(5, Role.CLIENTE))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordActual\":\"Temporal23\",\"passwordNueva\":\"MiClaveNueva1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("0000"));
+
+        verify(clientService).changePassword(eq(new AuthenticatedUser(5, "usuario", Role.CLIENTE)), eq(5), any());
+    }
+
     @Test
     void sinTokenDevuelve401() throws Exception {
         mockMvc.perform(get("/integrador/clients/5"))

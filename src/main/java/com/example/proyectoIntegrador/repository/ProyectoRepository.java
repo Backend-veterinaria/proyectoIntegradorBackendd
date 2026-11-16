@@ -56,6 +56,20 @@ public interface ProyectoRepository {
     boolean isUserActive(int clienteId);
 
     /**
+     * Indica si el usuario tiene una contraseña temporal que debe cambiar (CIT-06). Atrapa las
+     * excepciones y devuelve false, para que el login siga funcionando aunque no se haya ejecutado
+     * sql/CIT-06_alta_propietarios.sql.
+     */
+    boolean mustChangePassword(int clienteId);
+
+    /**
+     * Marca o desmarca la contraseña del usuario como temporal. No captura excepciones.
+     *
+     * @return filas actualizadas (0 si el usuario no existe)
+     */
+    int setMustChangePassword(int clienteId, boolean value);
+
+    /**
      * Recupera el ID de un usuario basado en su nombre de usuario.
      *
      * @param userName el nombre de usuario del cual se desea obtener el ID

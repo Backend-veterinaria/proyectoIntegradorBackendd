@@ -115,6 +115,9 @@ public class ProyectoServiceImpl implements ProyectoService {
             throw new BusinessException(INACTIVE_USER);
         }
 
+        // Contraseña temporal entregada por el personal (CIT-06): el frontend pide cambiarla
+        infoUser.setCambiarPassword(proyectoRepository.mustChangePassword(userId));
+
         return infoUser;
 
     }

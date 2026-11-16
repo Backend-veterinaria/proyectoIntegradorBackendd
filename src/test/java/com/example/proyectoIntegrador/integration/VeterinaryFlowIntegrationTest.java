@@ -355,6 +355,33 @@ class VeterinaryFlowIntegrationTest {
     }
 
     @Test
+    @Order(35)
+    void personalRegistraTutorQueCambiaSuPasswordTemporal() throws Exception {
+        String creado = ok(post("/integrador/clients"), vetToken, """
+                {"nombre":"Luis","apellido":"Diaz","telefono":"3001234567","email":"luis@correo.com","username":"luis.diaz"}""");
+        String temporal = JsonPath.read(creado, "$.responseObj.passwordTemporal");
+        int luisId = JsonPath.read(creado, "$.responseObj.cliente.clienteId");
+
+        // Primer inicio de sesión: debe cambiar la contraseña
+        String login = ok(post("/integrador/login"), null,
+                "{\"username\":\"luis.diaz\",\"password\":\"" + temporal + "\"}");
+        assertEquals(true, JsonPath.read(login, "$.responseObj.cambiarPassword"));
+        String luisToken = JsonPath.read(login, "$.token");
+
+        ok(put("/integrador/clients/" + luisId + "/password"), luisToken,
+                "{\"passwordActual\":\"" + temporal + "\",\"passwordNueva\":\"MiClaveNueva1\"}");
+
+        String despues = ok(post("/integrador/login"), null, "{\"username\":\"luis.diaz\",\"password\":\"MiClaveNueva1\"}");
+        assertEquals(false, JsonPath.read(despues, "$.responseObj.cambiarPassword"));
+
+        // Si la olvida, el personal le da otra temporal
+        String reset = ok(post("/integrador/clients/" + luisId + "/password/reset"), adminToken, null);
+        String otra = JsonPath.read(reset, "$.responseObj.passwordTemporal");
+        String conOtra = ok(post("/integrador/login"), null, "{\"username\":\"luis.diaz\",\"password\":\"" + otra + "\"}");
+        assertEquals(true, JsonPath.read(conOtra, "$.responseObj.cambiarPassword"));
+    }
+
+    @Test
     @Order(40)
     void scriptDeUsuariosParaVeterinariosDeEjemplo() throws Exception {
         // Veterinario creado "a mano", como los de ejemplo: personal + medico, sin usuario

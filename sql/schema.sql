@@ -962,3 +962,6 @@ ALTER TABLE ONLY public.vacuna
 
 \unrestrict fx3YYPty5Hm2KqwP4BqdJpyWpzyyiVF71YOaUYWjQbNWuNtvmoV13cuzVfMl7Mn
 
+
+-- CIT-06 (sql/CIT-06_alta_propietarios.sql)
+ALTER TABLE public.cliente ADD COLUMN IF NOT EXISTS cambiar_password boolean DEFAULT false NOT NULL;

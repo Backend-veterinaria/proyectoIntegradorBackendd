@@ -1,7 +1,9 @@
 package com.example.proyectoIntegrador.controllers;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.example.proyectoIntegrador.models.ClientCreateDTO;
 import com.example.proyectoIntegrador.models.ClientUpdateDTO;
+import com.example.proyectoIntegrador.models.PasswordChangeDTO;
 import com.example.proyectoIntegrador.models.ResponseGeneric;
 import com.example.proyectoIntegrador.models.StatusDTO;
 import jakarta.validation.Valid;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/integrador/clients")
-@Tag(name = "Propietarios", description = "Perfil, búsqueda y activación de propietarios")
+@Tag(name = "Propietarios", description = "Registro por el personal, perfil, búsqueda, activación y contraseñas de propietarios")
 public interface ClientController {
 
     /**
@@ -43,4 +45,26 @@ public interface ClientController {
     @PatchMapping("/{clienteId}/status")
     @PreAuthorize("hasRole('ADMIN')")
     ResponseEntity<ResponseGeneric> changeStatus(@PathVariable("clienteId") int clienteId, @Valid @RequestBody StatusDTO dto);
+
+    /**
+     * El personal registra un propietario desde la clínica (CIT-06). Responde con una contraseña temporal
+     * que se muestra una sola vez; el tutor debe cambiarla en su primer inicio de sesión.
+     */
+    @PostMapping
+    @PreAuthorize("hasAnyRole('VETERINARIO', 'ADMIN')")
+    ResponseEntity<ResponseGeneric> create(@Valid @RequestBody ClientCreateDTO dto);
+
+    /**
+     * El personal asigna una nueva contraseña temporal a un propietario que olvidó la suya (CIT-06).
+     */
+    @PostMapping("/{clienteId}/password/reset")
+    @PreAuthorize("hasAnyRole('VETERINARIO', 'ADMIN')")
+    ResponseEntity<ResponseGeneric> resetPassword(@PathVariable("clienteId") int clienteId);
+
+    /**
+     * El usuario cambia su propia contraseña dando la actual (CIT-06). Sirve para cualquier rol.
+     */
+    @PutMapping("/{clienteId}/password")
+    ResponseEntity<ResponseGeneric> changePassword(@PathVariable("clienteId") int clienteId,
+                                                   @Valid @RequestBody PasswordChangeDTO dto);
 }

@@ -1,7 +1,10 @@
 package com.example.proyectoIntegrador.services;
 
+import com.example.proyectoIntegrador.models.ClientCreateDTO;
 import com.example.proyectoIntegrador.models.ClientInfo;
+import com.example.proyectoIntegrador.models.ClientTemporaryPassword;
 import com.example.proyectoIntegrador.models.ClientUpdateDTO;
+import com.example.proyectoIntegrador.models.PasswordChangeDTO;
 import com.example.proyectoIntegrador.security.AuthenticatedUser;
 
 import java.util.List;
@@ -36,4 +39,19 @@ public interface ClientService {
      * puede iniciar sesión ni se le pueden agendar nuevas citas. El personal se gestiona en VET-01.
      */
     ClientInfo changeStatus(AuthenticatedUser user, int clienteId, boolean activo);
+
+    /**
+     * El personal registra un propietario (CIT-06, RF-03) con una contraseña temporal, devuelta una sola vez.
+     */
+    ClientTemporaryPassword create(AuthenticatedUser user, ClientCreateDTO dto);
+
+    /**
+     * El personal le asigna una nueva contraseña temporal a un propietario (CIT-06).
+     */
+    ClientTemporaryPassword resetPassword(AuthenticatedUser user, int clienteId);
+
+    /**
+     * El usuario cambia su propia contraseña dando la actual (CIT-06).
+     */
+    void changePassword(AuthenticatedUser user, int clienteId, PasswordChangeDTO dto);
 }

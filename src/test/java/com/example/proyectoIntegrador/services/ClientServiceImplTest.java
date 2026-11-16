@@ -36,12 +36,15 @@ class ClientServiceImplTest {
 
     @Mock
     private ClientRepository clientRepository;
+    @Mock
+    private com.example.proyectoIntegrador.repository.ProyectoRepository proyectoRepository;
 
     private ClientServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ClientServiceImpl(clientRepository);
+        service = new ClientServiceImpl(clientRepository, proyectoRepository,
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(4));
     }
 
     private static ClientInfo client(int id, Role role, boolean activo) {

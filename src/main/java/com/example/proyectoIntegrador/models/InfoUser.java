@@ -15,4 +15,6 @@ public class InfoUser {
     private String username;
     /** ADMIN, VETERINARIO o CLIENTE. */
     private String role;
+    /** true si inició sesión con una contraseña temporal y debe elegir una nueva (CIT-06). */
+    private Boolean cambiarPassword;
 }

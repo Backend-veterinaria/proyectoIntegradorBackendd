@@ -35,12 +35,12 @@ CREATE INDEX IF NOT EXISTS ix_horario_atencion_dia ON horario_atencion (dia_sema
 -- Horario general de EJEMPLO (cambiarlo según la veterinaria):
 -- lunes a viernes 08:00-12:00 y 14:00-18:00, sábados 08:00-12:00, domingos cerrado.
 INSERT INTO horario_atencion (medico_id, dia_semana, hora_inicio, hora_fin)
-SELECT NULL, d, h.ini, h.fin
+SELECT NULL::integer, d, h.ini, h.fin
 FROM generate_series(1, 5) AS d,
      (VALUES (TIME '08:00', TIME '12:00'), (TIME '14:00', TIME '18:00')) AS h(ini, fin)
 WHERE NOT EXISTS (SELECT 1 FROM horario_atencion)
 UNION ALL
-SELECT NULL, 6, TIME '08:00', TIME '12:00'
+SELECT NULL::integer, 6, TIME '08:00', TIME '12:00'
 WHERE NOT EXISTS (SELECT 1 FROM horario_atencion);
 
 COMMIT;

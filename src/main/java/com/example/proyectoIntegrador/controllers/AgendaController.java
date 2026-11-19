@@ -67,6 +67,15 @@ public interface AgendaController {
                                                           @Valid @RequestBody RescheduleAppointmentDTO dto);
 
 
+    /**
+     * Horas libres de un veterinario en un día, según su horario de atención (CIT-08). Cualquier usuario
+     * autenticado. fecha en formato yyyyMMdd; las horas se devuelven como HH:mm.
+     */
+    @GetMapping("/availability")
+    ResponseEntity<ResponseGeneric> getAvailability(@RequestParam("medicoId") int medicoId,
+                                                    @RequestParam("fecha") String fecha);
+
+
     @GetMapping("/AnAppointment/details")
     @ResponseBody
     ResponseEntity<ResponseGeneric> getDetailAppointment(@ModelAttribute @Valid DataDetailAppointmentDTO detailAppointmentDTO, HttpServletRequest request);

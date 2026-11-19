@@ -11,6 +11,7 @@ import com.example.proyectoIntegrador.security.Role;
 import org.springframework.security.access.AccessDeniedException;
 import com.example.proyectoIntegrador.services.AgendaService;
 import com.example.proyectoIntegrador.services.NotificationService;
+import com.example.proyectoIntegrador.services.ScheduleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class AgendaServiceImpl implements AgendaService {
     private final ProyectoRepository proyectoRepository;
     private final NotificationService notificationService;
     private final VeterinarianRepository veterinarianRepository;
+    private final ScheduleService scheduleService;
 
     // STRICT con 'uuuu': rechaza fechas inexistentes como 20261332 o 20260230
     private static final DateTimeFormatter STRICT_DATE =
@@ -74,7 +76,11 @@ public class AgendaServiceImpl implements AgendaService {
             throw new BusinessException("La mascota no existe, no pertenece al cliente o esta inactiva");
         }
 
-        if (!agendaCitaRepository.isSlotAvailable(dataAppointmentDTO.getMedicoId(), date, time, null)) {
+        // Horario de atención y duración de la cita, configurables en la base de datos (CIT-08)
+        int minutes = scheduleService.appointmentMinutes();
+        scheduleService.requireWithinSchedule(dataAppointmentDTO.getMedicoId(), date, time, minutes);
+
+        if (!agendaCitaRepository.isSlotAvailable(dataAppointmentDTO.getMedicoId(), date, time, null, minutes)) {
             throw new BusinessException("El veterinario no tiene disponible ese horario");
         }
 
@@ -177,7 +183,10 @@ public class AgendaServiceImpl implements AgendaService {
                 .orElseThrow(() -> new BusinessException("El veterinario no existe o esta inactivo"));
 
         // La propia cita no cuenta: así se puede mover dentro de su mismo horario
-        if (!agendaCitaRepository.isSlotAvailable(medicoId, fecha, hora, agendaId)) {
+        int minutes = scheduleService.appointmentMinutes();
+        scheduleService.requireWithinSchedule(medicoId, fecha, hora, minutes);
+
+        if (!agendaCitaRepository.isSlotAvailable(medicoId, fecha, hora, agendaId, minutes)) {
             throw new BusinessException("El veterinario no tiene disponible ese horario");
         }
 

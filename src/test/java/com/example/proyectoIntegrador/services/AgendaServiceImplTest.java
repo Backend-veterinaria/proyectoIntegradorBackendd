@@ -51,12 +51,16 @@ class AgendaServiceImplTest {
     private NotificationService notificationService;
     @Mock
     private VeterinarianRepository veterinarianRepository;
+    @Mock
+    private ScheduleService scheduleService;
 
     private AgendaServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new AgendaServiceImpl(agendaCitaRepository, proyectoRepository, notificationService, veterinarianRepository);
+        service = new AgendaServiceImpl(agendaCitaRepository, proyectoRepository, notificationService, veterinarianRepository,
+                scheduleService);
+        org.mockito.Mockito.lenient().when(scheduleService.appointmentMinutes()).thenReturn(30);
     }
 
     private static DataVeterinarianAgendaDTO agenda(String fecha, Integer medicoId, Integer estadoId) {
@@ -269,7 +273,7 @@ class AgendaServiceImplTest {
         when(proyectoRepository.isUserActive(5)).thenReturn(true);
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(true);
-        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null)).thenReturn(true);
+        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null, 30)).thenReturn(true);
         when(agendaCitaRepository.findEstadoId(AppointmentStatus.PROGRAMADA)).thenReturn(Optional.of(1));
         when(agendaCitaRepository.insertAgendaCita(any(), any(), any(), any(), any(), any(), any())).thenReturn(Optional.of(500));
 
@@ -284,7 +288,7 @@ class AgendaServiceImplTest {
         when(proyectoRepository.isUserActive(5)).thenReturn(true);
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(true);
-        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null)).thenReturn(true);
+        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null, 30)).thenReturn(true);
         when(agendaCitaRepository.findEstadoId(AppointmentStatus.PROGRAMADA)).thenReturn(Optional.of(1));
         when(agendaCitaRepository.insertAgendaCita(any(), any(), any(), any(), any(), any(), any())).thenReturn(Optional.of(500));
         org.mockito.Mockito.doThrow(new IllegalStateException("ResponseBodyEmitter has already completed"))
@@ -311,7 +315,7 @@ class AgendaServiceImplTest {
         when(proyectoRepository.isUserActive(5)).thenReturn(true);
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(true);
-        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null)).thenReturn(false);
+        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null, 30)).thenReturn(false);
 
         BusinessException e = assertThrows(BusinessException.class, () -> service.scheduleAnAppointment(nuevaCita()));
         assertEquals("El veterinario no tiene disponible ese horario", e.getMessage());
@@ -351,7 +355,7 @@ class AgendaServiceImplTest {
         when(proyectoRepository.isUserActive(5)).thenReturn(true);
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
         when(agendaCitaRepository.isMascotaOfClient(8, 5)).thenReturn(true);
-        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null)).thenReturn(true);
+        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, null, 30)).thenReturn(true);
         when(agendaCitaRepository.findEstadoId(AppointmentStatus.PROGRAMADA)).thenReturn(Optional.empty());
 
         RuntimeException e = assertThrows(RuntimeException.class, () -> service.scheduleAnAppointment(nuevaCita()));
@@ -431,7 +435,7 @@ class AgendaServiceImplTest {
         when(agendaCitaRepository.findAgendaItem(100))
                 .thenReturn(Optional.of(citaDe(5, 11, 1, "Programada")), Optional.of(citaDe(5, 11, 4, "Reprogramada")));
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
-        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, 100)).thenReturn(true);
+        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, 100, 30)).thenReturn(true);
         when(agendaCitaRepository.findEstadoId(AppointmentStatus.REPROGRAMADA)).thenReturn(Optional.of(4));
         when(agendaCitaRepository.reschedule(100, 1, FUTURE, TEN, 11, 4)).thenReturn(1);
 
@@ -448,7 +452,7 @@ class AgendaServiceImplTest {
         when(agendaCitaRepository.findAgendaItem(100))
                 .thenReturn(Optional.of(citaDe(5, 11, 1, "Programada")), Optional.of(citaDe(5, 12, 4, "Reprogramada")));
         when(agendaCitaRepository.validateVeterinarian(12)).thenReturn(Optional.of(true));
-        when(agendaCitaRepository.isSlotAvailable(12, FUTURE, TEN, 100)).thenReturn(true);
+        when(agendaCitaRepository.isSlotAvailable(12, FUTURE, TEN, 100, 30)).thenReturn(true);
         when(agendaCitaRepository.findEstadoId(AppointmentStatus.REPROGRAMADA)).thenReturn(Optional.of(4));
         when(agendaCitaRepository.reschedule(100, 1, FUTURE, TEN, 12, 4)).thenReturn(1);
 
@@ -488,7 +492,7 @@ class AgendaServiceImplTest {
     void reprogramarAHorarioOcupadoFalla() {
         when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(citaDe(5, 11, 1, "Programada")));
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
-        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, 100)).thenReturn(false);
+        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, 100, 30)).thenReturn(false);
 
         assertThrows(BusinessException.class,
                 () -> service.rescheduleAppointment(CLIENTE, 100, reprogramar(FUTURE_TEXT, "100000", null)));
@@ -518,7 +522,7 @@ class AgendaServiceImplTest {
     void reprogramarSiOtraPersonaCambioLaCitaNoSobrescribe() {
         when(agendaCitaRepository.findAgendaItem(100)).thenReturn(Optional.of(citaDe(5, 11, 1, "Programada")));
         when(agendaCitaRepository.validateVeterinarian(11)).thenReturn(Optional.of(true));
-        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, 100)).thenReturn(true);
+        when(agendaCitaRepository.isSlotAvailable(11, FUTURE, TEN, 100, 30)).thenReturn(true);
         when(agendaCitaRepository.findEstadoId(AppointmentStatus.REPROGRAMADA)).thenReturn(Optional.of(4));
         when(agendaCitaRepository.reschedule(100, 1, FUTURE, TEN, 11, 4)).thenReturn(0);
 

@@ -47,6 +47,9 @@ class AgendaControllerImplTest {
     @MockBean
     private AgendaService agendaService;
 
+    @MockBean
+    private com.example.proyectoIntegrador.services.ScheduleService scheduleService;
+
     private String bearer(int userId, String username) {
         return bearer(userId, username, Role.CLIENTE);
     }

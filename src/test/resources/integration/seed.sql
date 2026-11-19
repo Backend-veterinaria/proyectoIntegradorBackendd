@@ -10,3 +10,10 @@ INSERT INTO estado_cita (estado_id, descripcion) VALUES
 
 INSERT INTO raza (raza_id, descripcion) VALUES (1, 'Labrador'), (2, 'Criollo');
 SELECT setval('raza_raza_id_seq', 2);
+
+INSERT INTO parametro_sistema (clave, valor, descripcion) VALUES ('duracion_cita_minutos', '30', 'Duracion de una cita en minutos');
+
+INSERT INTO tipo_notificacion (codigo, titulo, descripcion) VALUES
+    ('cita-creada', 'Cita agendada', 'Cuando se agenda una cita'),
+    ('cita-cancelada', 'Cita cancelada', 'Cuando se cancela una cita'),
+    ('cita-reprogramada', 'Cita reprogramada', 'Cuando una cita cambia de fecha, hora o veterinario');

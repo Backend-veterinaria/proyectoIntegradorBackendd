@@ -22,6 +22,7 @@ import java.util.List;
 public class AgendaControllerImpl implements AgendaController {
 
     private final AgendaService agendaService;
+    private final com.example.proyectoIntegrador.services.ScheduleService scheduleService;
 
     @Override
     public ResponseEntity<ResponseGeneric> getListAgend(DataUserDTO dataUser, HttpServletRequest request) {
@@ -173,6 +174,25 @@ public class AgendaControllerImpl implements AgendaController {
             ResponseGeneric responseError = new ResponseGeneric();
             responseError.setResponseCode(CodesResponse.ERROR_MODIFY_DATA.getCode());
             responseError.setResponseDesc(CodesResponse.ERROR_MODIFY_DATA.getDescription());
+            responseError.setResponseObj(ErrorMessages.clientMessage(e));
+            return ResponseEntity.status(HttpStatus.OK).body(responseError);
+        }
+    }
+
+    @Override
+    public ResponseEntity<ResponseGeneric> getAvailability(int medicoId, String fecha) {
+        log.debug("START getAvailability medico={} fecha={}", medicoId, fecha);
+
+        try {
+            ResponseGeneric response = new ResponseGeneric();
+            response.setResponseCode(CodesResponse.OK.getCode());
+            response.setResponseDesc(CodesResponse.OK.getDescription());
+            response.setResponseObj(scheduleService.availability(medicoId, fecha));
+            return ResponseEntity.ok().body(response);
+        } catch (Exception e) {
+            ResponseGeneric responseError = new ResponseGeneric();
+            responseError.setResponseCode(CodesResponse.ERROR_GET_DATA.getCode());
+            responseError.setResponseDesc(CodesResponse.ERROR_GET_DATA.getDescription());
             responseError.setResponseObj(ErrorMessages.clientMessage(e));
             return ResponseEntity.status(HttpStatus.OK).body(responseError);
         }

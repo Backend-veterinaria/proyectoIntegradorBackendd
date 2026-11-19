@@ -257,6 +257,74 @@ class VeterinaryFlowIntegrationTest {
         assertEquals(estadoId("Cancelada"), estado);
     }
 
+    @Test
+    @Order(15)
+    void horariosConfigurablesDesdeLaBaseDeDatos() throws Exception {
+        // El administrador define el horario del veterinario: todos los días de 08:00 a 12:00
+        StringBuilder franjas = new StringBuilder();
+        for (int d = 1; d <= 7; d++) {
+            franjas.append(d > 1 ? "," : "").append("{\"diaSemana\":").append(d)
+                    .append(",\"horaInicio\":\"08:00\",\"horaFin\":\"12:00\"}");
+        }
+        ok(put("/integrador/schedules").param("medicoId", String.valueOf(medicoId)), adminToken,
+                "{\"franjas\":[" + franjas + "]}");
+
+        // Pasado mañana tiene la cita reprogramada a las 09:00: no se ofrecen 09:00 (ni nada a menos de 30 min)
+        String libres = ok(get("/integrador/agendaCita/availability")
+                .param("medicoId", String.valueOf(medicoId)).param("fecha", PASADO_MANANA), clienteToken, null);
+        assertEquals(List.of("08:00", "08:30", "09:30", "10:00", "10:30", "11:00", "11:30"),
+                JsonPath.read(libres, "$.responseObj.horarios"));
+
+        // La duración de la cita también sale de la base de datos
+        ok(put("/integrador/parameters/duracion_cita_minutos"), adminToken, "{\"valor\":\"60\"}");
+        String porHora = ok(get("/integrador/agendaCita/availability")
+                .param("medicoId", String.valueOf(medicoId)).param("fecha", PASADO_MANANA), clienteToken, null);
+        assertEquals(List.of("08:00", "10:00", "11:00"), JsonPath.read(porHora, "$.responseObj.horarios"));
+        ok(put("/integrador/parameters/duracion_cita_minutos"), adminToken, "{\"valor\":\"30\"}");
+
+        // Fuera del horario no se puede agendar
+        String fuera = call(post("/integrador/agendaCita/scheduleAnAppointment"), clienteToken,
+                "{\"clienteId\":" + clienteId + ",\"medicoId\":" + medicoId + ",\"mascotaId\":" + mascotaId
+                        + ",\"description\":\"Tarde\",\"fecha\":\"" + PASADO_MANANA + "\",\"hora\":\"160000\"}");
+        assertEquals("El veterinario no atiende en ese horario", JsonPath.read(fuera, "$.responseObj"));
+
+        // Se quita el horario para no afectar los demás pasos (sin horarios no se valida)
+        ok(put("/integrador/schedules").param("medicoId", String.valueOf(medicoId)), adminToken, "{\"franjas\":[]}");
+    }
+
+    @Test
+    @Order(16)
+    void avisosGuardadosYPreferencias() throws Exception {
+        // Hasta aquí el cliente agendó dos citas, reprogramó una y canceló otra: todo quedó guardado
+        String bandeja = ok(get("/integrador/notifications"), clienteToken, null);
+        List<String> tipos = JsonPath.read(bandeja, "$.responseObj.items[*].tipo");
+        assertTrue(tipos.containsAll(List.of("cita-creada", "cita-reprogramada", "cita-cancelada")), tipos.toString());
+        assertTrue(((Number) JsonPath.read(bandeja, "$.responseObj.noLeidas")).intValue() >= 4);
+        List<String> mensajes = JsonPath.read(bandeja, "$.responseObj.items[?(@.tipo == 'cita-cancelada')].mensaje");
+        assertTrue(mensajes.get(0).contains("Motivo: Viaje"), mensajes.toString());
+
+        // El veterinario también recibió el aviso de la cancelación
+        String delVet = ok(get("/integrador/notifications"), vetToken, null);
+        assertTrue(((List<?>) JsonPath.read(delVet, "$.responseObj.items[?(@.tipo == 'cita-cancelada')]")).size() >= 1);
+
+        // Preferencias: los tres tipos, activos por defecto; se desactiva uno
+        String prefs = ok(get("/integrador/notifications/preferences"), clienteToken, null);
+        assertEquals(3, ((List<?>) JsonPath.read(prefs, "$.responseObj")).size());
+        ok(put("/integrador/notifications/preferences"), clienteToken,
+                "{\"preferencias\":[{\"tipo\":\"cita-creada\",\"activa\":false}]}");
+        int antes = ((List<?>) JsonPath.read(ok(get("/integrador/notifications"), clienteToken, null), "$.responseObj.items")).size();
+        ok(post("/integrador/agendaCita/scheduleAnAppointment"), clienteToken,
+                "{\"clienteId\":" + clienteId + ",\"medicoId\":" + medicoId + ",\"mascotaId\":" + mascotaId
+                        + ",\"description\":\"Sin aviso\",\"fecha\":\"" + MANANA + "\",\"hora\":\"170000\"}");
+        int despues = ((List<?>) JsonPath.read(ok(get("/integrador/notifications"), clienteToken, null), "$.responseObj.items")).size();
+        assertEquals(antes, despues, "con la preferencia apagada no se guarda el aviso");
+
+        // Marcar todo como leído
+        ok(patch("/integrador/notifications/read-all"), clienteToken, null);
+        assertEquals(0, ((Number) JsonPath.read(ok(get("/integrador/notifications"), clienteToken, null),
+                "$.responseObj.noLeidas")).intValue());
+    }
+
     // ---------------------------------------------------------------- historia clínica
 
     @Test
@@ -326,7 +394,8 @@ class VeterinaryFlowIntegrationTest {
                 adminToken, null);
         List<Map<String, Object>> items = JsonPath.read(porEstado, "$.responseObj.items");
         assertEquals(6, items.size(), "aparecen todos los estados, también los que tienen 0");
-        assertEquals(2, ((Number) JsonPath.read(porEstado, "$.responseObj.total")).intValue());
+        // 3 citas en el rango: la atendida, la cancelada y la del paso de preferencias de notificación
+        assertEquals(3, ((Number) JsonPath.read(porEstado, "$.responseObj.total")).intValue());
         List<Number> atendidas = JsonPath.read(porEstado, "$.responseObj.items[?(@.status == 'ATENDIDA')].cantidad");
         assertEquals(List.of(1), atendidas.stream().map(Number::intValue).toList());
 

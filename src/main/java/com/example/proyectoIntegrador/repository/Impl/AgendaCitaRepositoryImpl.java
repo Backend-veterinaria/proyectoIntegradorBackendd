@@ -235,13 +235,13 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
     }
 
     @Override
-    public boolean isSlotAvailable(int medicoId, LocalDate fecha, LocalTime hora, Integer excludeAgendaId) {
-        // Hay choque si otra cita del mismo veterinario empieza a menos de APPOINTMENT_MINUTES de esta.
+    public boolean isSlotAvailable(int medicoId, LocalDate fecha, LocalTime hora, Integer excludeAgendaId, int minutes) {
+        // Hay choque si otra cita del mismo veterinario empieza a menos de "minutes" de esta.
         // Las canceladas no ocupan horario. Los límites no se salen del día.
-        LocalTime desde = hora.isBefore(LocalTime.MIN.plusMinutes(APPOINTMENT_MINUTES))
-                ? LocalTime.MIN : hora.minusMinutes(APPOINTMENT_MINUTES);
-        LocalTime hasta = hora.isAfter(LocalTime.MAX.minusMinutes(APPOINTMENT_MINUTES))
-                ? LocalTime.MAX : hora.plusMinutes(APPOINTMENT_MINUTES);
+        LocalTime desde = hora.isBefore(LocalTime.MIN.plusMinutes(minutes))
+                ? LocalTime.MIN : hora.minusMinutes(minutes);
+        LocalTime hasta = hora.isAfter(LocalTime.MAX.minusMinutes(minutes))
+                ? LocalTime.MAX : hora.plusMinutes(minutes);
 
         String sql = """
                 SELECT NOT EXISTS (
@@ -260,6 +260,21 @@ public class AgendaCitaRepositoryImpl implements AgendaCitaRepository {
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class,
                 medicoId, Date.valueOf(fecha), Time.valueOf(desde), Time.valueOf(hasta),
                 excludeAgendaId, excludeAgendaId));
+    }
+
+    @Override
+    public List<LocalTime> findBusyTimes(int medicoId, LocalDate fecha) {
+        String sql = """
+                SELECT c.hora
+                FROM agenda_cita ac
+                JOIN cita c ON c.cita_id = ac.cita_id
+                LEFT JOIN estado_cita ec ON ec.estado_id = ac.estado_id
+                WHERE ac.medico_id = ? AND c.fecha = ?
+                  AND UPPER(COALESCE(ec.descripcion, '')) NOT LIKE '%CANCEL%'
+                ORDER BY c.hora
+                """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getTime("hora").toLocalTime(), medicoId, Date.valueOf(fecha));
     }
 
     @Override

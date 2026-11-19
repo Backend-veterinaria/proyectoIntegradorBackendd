@@ -968,3 +968,43 @@ ALTER TABLE public.cliente ADD COLUMN IF NOT EXISTS cambiar_password boolean DEF
 
 -- CIT-07 (sql/CIT-07_motivo_cancelacion.sql)
 ALTER TABLE public.agenda_cita ADD COLUMN IF NOT EXISTS motivo_cancelacion character varying(500);
+
+-- CIT-08 (sql/CIT-08_horarios_atencion.sql): solo la estructura; los datos de ejemplo los carga el script
+CREATE TABLE IF NOT EXISTS public.parametro_sistema (
+    clave character varying(100) PRIMARY KEY,
+    valor character varying(200) NOT NULL,
+    descripcion character varying(500)
+);
+CREATE TABLE IF NOT EXISTS public.horario_atencion (
+    horario_id serial PRIMARY KEY,
+    medico_id integer REFERENCES public.medico (medico_id),
+    dia_semana smallint NOT NULL CHECK (dia_semana BETWEEN 1 AND 7),
+    hora_inicio time without time zone NOT NULL,
+    hora_fin time without time zone NOT NULL,
+    activo boolean DEFAULT true NOT NULL,
+    CHECK (hora_fin > hora_inicio)
+);
+
+-- CIT-09 (sql/CIT-09_notificaciones.sql): solo la estructura; los tipos los carga el script
+CREATE TABLE IF NOT EXISTS public.tipo_notificacion (
+    codigo character varying(50) PRIMARY KEY,
+    titulo character varying(100) NOT NULL,
+    descripcion character varying(300),
+    activo boolean DEFAULT true NOT NULL
+);
+CREATE TABLE IF NOT EXISTS public.notificacion (
+    notificacion_id serial PRIMARY KEY,
+    cliente_id integer NOT NULL REFERENCES public.cliente (cliente_id),
+    tipo character varying(50) NOT NULL REFERENCES public.tipo_notificacion (codigo),
+    titulo character varying(100) NOT NULL,
+    mensaje character varying(500) NOT NULL,
+    datos text,
+    leida boolean DEFAULT false NOT NULL,
+    fecha_creacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE TABLE IF NOT EXISTS public.preferencia_notificacion (
+    cliente_id integer NOT NULL REFERENCES public.cliente (cliente_id),
+    tipo character varying(50) NOT NULL REFERENCES public.tipo_notificacion (codigo),
+    activa boolean NOT NULL,
+    PRIMARY KEY (cliente_id, tipo)
+);

@@ -68,11 +68,17 @@ public interface AgendaCitaRepository {
 
     /**
      * Indica si el veterinario tiene libre el horario: no tiene otra cita (que no esté cancelada)
-     * a menos de {@code APPOINTMENT_MINUTES} minutos de esa hora. No captura excepciones.
+     * a menos de {@code minutes} minutos de esa hora (la duración de una cita, CIT-08). No captura excepciones.
      *
      * @param excludeAgendaId cita que no se tiene en cuenta (la que se está reprogramando), o null
      */
-    boolean isSlotAvailable(int medicoId, LocalDate fecha, LocalTime hora, Integer excludeAgendaId);
+    boolean isSlotAvailable(int medicoId, LocalDate fecha, LocalTime hora, Integer excludeAgendaId, int minutes);
+
+    /**
+     * Horas de inicio de las citas del veterinario ese día que ocupan horario (todas menos las
+     * canceladas), para calcular las horas libres (CIT-08). No captura excepciones.
+     */
+    List<LocalTime> findBusyTimes(int medicoId, LocalDate fecha);
 
     /**
      * Busca en estado_cita el id del estado, reconociéndolo por su descripción.
@@ -89,7 +95,7 @@ public interface AgendaCitaRepository {
      */
     int reschedule(int agendaId, int currentEstadoId, LocalDate fecha, LocalTime hora, int medicoId, int newEstadoId);
 
-    /** Duración de una cita: dos citas del mismo veterinario deben estar separadas al menos esto. */
+    /** Duración de una cita si no está configurada en parametro_sistema (duracion_cita_minutos). */
     int APPOINTMENT_MINUTES = 30;
 
 }

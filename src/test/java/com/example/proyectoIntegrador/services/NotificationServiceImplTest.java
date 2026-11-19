@@ -16,7 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
  */
 class NotificationServiceImplTest {
 
-    private final NotificationServiceimpl service = new NotificationServiceimpl();
+    private final NotificationServiceimpl service = new NotificationServiceimpl(
+            org.mockito.Mockito.mock(com.example.proyectoIntegrador.repository.NotificationRepository.class),
+            new com.fasterxml.jackson.databind.ObjectMapper());
     private final DetailAppointment cita = new DetailAppointment("Vacunación", "20261120", "143000");
 
     @Test

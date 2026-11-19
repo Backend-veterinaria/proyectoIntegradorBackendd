@@ -20,4 +20,18 @@ public interface NotificationService {
      * "cita-reprogramada"). Si no está conectado no hace nada; nunca lanza excepciones.
      */
     void notify(String clientId, String event, Object data);
+
+    /** Avisos guardados del usuario, del más reciente al más antiguo (CIT-09). */
+    com.example.proyectoIntegrador.models.NotificationModels.Inbox inbox(int userId, boolean soloNoLeidas, int limit);
+
+    /** Marca un aviso propio como leído. */
+    void markRead(int userId, int notificacionId);
+
+    void markAllRead(int userId);
+
+    /** Tipos de aviso activos con la preferencia del usuario. */
+    java.util.List<com.example.proyectoIntegrador.models.NotificationModels.Preference> preferences(int userId);
+
+    java.util.List<com.example.proyectoIntegrador.models.NotificationModels.Preference> updatePreferences(
+            int userId, java.util.List<com.example.proyectoIntegrador.models.NotificationModels.PreferenceItem> items);
 }
